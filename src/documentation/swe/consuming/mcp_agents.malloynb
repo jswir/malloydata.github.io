@@ -1,0 +1,154 @@
+>>>markdown
+# MCP for AI Agents
+
+Connect AI assistants like Claude to your Malloy semantic models using the Model Context Protocol (MCP).
+
+---
+
+## Quick Start
+
+### 1. Start Publisher
+
+```bash
+npx @malloy-publisher/server --server_root /path/to/your/packages
+```
+
+The MCP server starts automatically at `http://localhost:4040/mcp`.
+
+For other deployment options (Docker, git clone), see [Publish Your Models](../publishing/publishing.malloynb).
+
+### 2. Configure Claude Desktop
+
+Add to your Claude Desktop config (`claude_desktop_config.json`):
+
+```json
+{
+  "mcpServers": {
+    "malloy-publisher": {
+      "url": "http://localhost:4040/mcp"
+    }
+  }
+}
+```
+
+### 3. Start Asking Questions
+
+In Claude Desktop:
+- "What Malloy packages are available?"
+- "Show me the measures in the orders model"
+- "Query total revenue by month"
+
+---
+
+## MCP Tools
+
+Publisher exposes these tools to AI agents:
+
+### Discovery
+
+| Tool | Description |
+|------|-------------|
+| `malloy_projectList` | List all available projects |
+| `malloy_packageList` | List packages in a project |
+| `malloy_packageGet` | Get models in a package |
+| `malloy_modelGetText` | Get raw model source code |
+
+### Query Execution
+
+| Tool | Description |
+|------|-------------|
+| `malloy_executeQuery` | Run a Malloy query, returns JSON results |
+
+---
+
+## Example Prompts
+
+Once connected, try these prompts with Claude:
+
+**Exploration:**
+- "Use Malloy to run an exploratory analysis on the FAA dataset"
+- "Help me understand the ecommerce data and create charts"
+
+**Specific queries:**
+- "How many flights were there by carrier last year?"
+- "What's the average order value by region?"
+
+**Analysis:**
+- "Why did revenue drop in March? Investigate by region and product."
+
+---
+
+## Best Practices for AI-Friendly Models
+
+### Use Descriptive Names
+
+```malloy
+// Good - AI understands intent
+measure: customer_lifetime_value is ...
+measure: monthly_recurring_revenue is ...
+
+// Bad - cryptic abbreviations
+measure: clv is ...
+measure: mrr is ...
+```
+
+### Add Comments
+
+Comments become part of the schema AI agents can read:
+
+```malloy
+source: orders is duckdb.table('orders.parquet') extend {
+  // Revenue after discounts and returns
+  measure: net_revenue is sum(amount - discount - returns)
+}
+```
+
+### Define Common Views
+
+Pre-built views guide AI toward valid queries:
+
+```malloy
+view: executive_summary is {
+  aggregate: total_revenue, order_count, customer_count
+}
+
+view: regional_breakdown is {
+  group_by: region
+  aggregate: total_revenue, order_count
+}
+```
+
+---
+
+## Security
+
+MCP queries use Publisher's database credentials. Ensure:
+- Database user has SELECT-only permissions
+- Sensitive tables aren't exposed in models
+- Consider rate limiting for production
+
+---
+
+## Troubleshooting
+
+**"Connection refused" on port 4040**
+- Verify Publisher is running
+- Check firewall allows port 4040
+
+**AI can't find models**
+- Check package path in Publisher config
+- Verify `.malloy` files exist
+- Restart Publisher after adding models
+
+**Queries fail**
+- Test the query in [Explorer](explorer.malloynb) first
+- Check source/measure names match the model
+
+---
+
+## Resources
+
+- [MCP Demo Video](https://www.loom.com/share/fcc5112ac1ca4bf78bee0985f1cd31be)
+- [Model Context Protocol Spec](https://modelcontextprotocol.io/)
+- [Publisher GitHub](https://github.com/malloydata/publisher)
+

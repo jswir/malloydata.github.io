@@ -52,6 +52,57 @@
       ]
     },
     {
+      "title": "Malloy for Software Engineers",
+      "items": [
+        {
+          "title": "Overview",
+          "link": "/swe/index.malloynb"
+        },
+        {
+          "title": "Model Your Data",
+          "link": "/swe/modeling/modeling.malloynb"
+        },
+        {
+          "title": "Troubleshooting",
+          "link": "/swe/modeling/troubleshooting.malloynb"
+        },
+        {
+          "title": "Publish Your Models",
+          "link": "/swe/publishing/publishing.malloynb"
+        },
+        {
+          "title": "Consume Your Models",
+          "items": [
+            {
+              "title": "Explorer UI",
+              "link": "/swe/consuming/explorer.malloynb"
+            },
+            {
+              "title": "REST API",
+              "link": "/swe/consuming/rest_api.malloynb"
+            },
+            {
+              "title": "MCP for AI Agents",
+              "link": "/swe/consuming/mcp_agents.malloynb"
+            },
+            {
+              "title": "Publisher SDK (React)",
+              "link": "/swe/consuming/publisher_sdk.malloynb"
+            }
+          ]
+        },
+        {
+          "title": "Transform Data",
+          "items": [
+            {
+              "title": "CLI & MalloySQL",
+              "link": "/swe/transform/transform_data.malloynb"
+            }
+          ]
+        }
+      ]
+    },
+    {
       "title": "Language Reference",
       "items": [
         {

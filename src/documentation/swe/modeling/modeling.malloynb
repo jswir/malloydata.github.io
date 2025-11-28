@@ -1,0 +1,348 @@
+>>>markdown
+# Model Your Data
+
+A semantic model defines your data's meaning—what a "customer" is, how "revenue" is calculated, which tables relate to each other. Instead of scattering this logic across SQL queries, you define it once and reuse it everywhere.
+
+This guide takes you from raw tables to a working model in 15 minutes.
+
+---
+
+## 1. Define Your Sources
+
+A source is a table plus metadata. Start with just the table:
+
+```malloy
+source: flights is duckdb.table('../../data/flights.parquet') extend {}
+source: airports is duckdb.table('../../data/airports.parquet') extend {}
+source: carriers is duckdb.table('../../data/carriers.parquet') extend {}
+```
+
+That's it. You now have sources you can query.
+
+The example above uses DuckDB with local files. To connect to other databases (Postgres, BigQuery, Snowflake, etc.), see [Connecting a Database](../../setup/connection_instructions.malloynb).
+
+---
+
+## 2. Explore with VS Code
+
+Before writing any model code, use the VS Code extension to understand your data.
+
+### Schema View
+
+Click **Schema** in the sidebar to see:
+- All columns and their types
+- Sample values
+- What you're working with
+
+Once you've defined a source, you can also open **Explorer** (the visual query builder) directly in VS Code—click the source name and select **Explore** from the menu.
+
+### Preview Data
+>>>malloy
+run: duckdb.table('../../data/flights.parquet') -> { select: * limit: 5 }
+>>>markdown
+
+### Run Ad-hoc Queries
+>>>malloy
+run: duckdb.table('../../data/flights.parquet') -> {
+  group_by: carrier
+  aggregate: flight_count is count()
+  limit: 10
+}
+>>>markdown
+
+Explore until you understand:
+- What one row represents (the "grain")
+- What columns exist
+- What questions you want to answer
+
+See [Queries](../../language/query.malloynb) for the full query syntax.
+
+---
+
+## 3. Add Measures
+
+Measures are reusable aggregations. Add them when you find yourself writing the same `count()` or `sum()` repeatedly.
+>>>malloy
+source: flights is duckdb.table('../../data/flights.parquet') extend {
+  measure:
+    flight_count is count()
+    total_distance is sum(distance)
+    avg_distance is avg(distance)
+}
+
+run: flights -> { aggregate: flight_count, total_distance, avg_distance }
+>>>markdown
+
+### Filtered Measures
+
+Count or sum only matching rows:
+>>>malloy
+source: flights2 is duckdb.table('../../data/flights.parquet') extend {
+  measure:
+    flight_count is count()
+    delayed_flights is count() { where: dep_delay > 15 }
+    long_flights is count() { where: distance > 1000 }
+    delay_rate is delayed_flights / flight_count * 100
+}
+
+run: flights2 -> { aggregate: flight_count, delayed_flights, delay_rate }
+>>>markdown
+
+Beyond `count()` and `sum()`, Malloy supports `avg()`, `min()`, `max()`, and more. Use `count(field)` for distinct counts. See [Aggregates](../../language/aggregates.malloynb) for the full list.
+
+---
+
+## 4. Add Dimensions
+
+Dimensions are reusable groupings. Add them when you keep grouping by the same expression.
+>>>malloy
+source: flights3 is duckdb.table('../../data/flights.parquet') extend {
+  dimension:
+    flight_year is dep_time.year
+    flight_month is dep_time.month
+
+  measure:
+    flight_count is count()
+}
+
+run: flights3 -> {
+  group_by: flight_year, flight_month
+  aggregate: flight_count
+  order_by: flight_year, flight_month
+}
+>>>markdown
+
+### Category Dimensions
+
+Create buckets from numeric columns:
+>>>malloy
+source: flights4 is duckdb.table('../../data/flights.parquet') extend {
+  dimension:
+    distance_bucket is
+      pick 'Short' when distance < 500
+      pick 'Medium' when distance < 1000
+      else 'Long'
+
+  measure: flight_count is count()
+}
+
+run: flights4 -> {
+  group_by: distance_bucket
+  aggregate: flight_count
+}
+>>>markdown
+
+Dimensions can be any expression—date extractions, string manipulations, case logic, and more. See [Fields](../../language/fields.malloynb) for details.
+
+---
+
+## 5. Add Joins
+
+Joins connect related tables. Once defined, all joined data becomes queryable—you define the relationships once and never have to write join logic in queries again.
+>>>malloy
+source: carriers is duckdb.table('../../data/carriers.parquet') extend {
+  primary_key: code
+}
+
+source: flights5 is duckdb.table('../../data/flights.parquet') extend {
+  join_one: carriers with carrier  // joins where carrier = carriers.code
+
+  measure: flight_count is count()
+}
+
+run: flights5 -> {
+  group_by: carriers.nickname
+  aggregate: flight_count
+  limit: 10
+}
+>>>markdown
+
+### Join Types
+
+- `join_one`: Each flight has one carrier (many-to-one)
+- `join_many`: Each carrier has many flights (one-to-many)
+
+### Multiple Joins to Same Table
+
+Use an alias to join the same table multiple times:
+>>>malloy
+source: airports2 is duckdb.table('../../data/airports.parquet') extend {
+  primary_key: code
+}
+
+source: flights6 is duckdb.table('../../data/flights.parquet') extend {
+  join_one: origin_airport is airports2 with origin
+  join_one: dest_airport is airports2 with destination
+
+  measure: flight_count is count()
+}
+
+run: flights6 -> {
+  group_by:
+    origin_city is origin_airport.city
+    dest_city is dest_airport.city
+  aggregate: flight_count
+  limit: 10
+}
+>>>markdown
+
+Malloy handles aggregates correctly across joins—no more fanout bugs or incorrect counts. It uses [symmetric aggregates](../../language/aggregates.malloynb) to ensure metrics compute correctly regardless of join cardinality.
+
+See [Joins](../../language/join.malloynb) for more join patterns.
+
+---
+
+## 6. Add Views
+
+Views are saved queries. Add them when you have analysis patterns you'll reuse.
+>>>malloy
+source: carriers3 is duckdb.table('../../data/carriers.parquet') extend {
+  primary_key: code
+}
+
+source: flights7 is duckdb.table('../../data/flights.parquet') extend {
+  join_one: carriers3 with carrier
+
+  dimension:
+    flight_year is dep_time.year
+    flight_month is dep_time.month
+
+  measure:
+    flight_count is count()
+    total_distance is sum(distance)
+    avg_distance is avg(distance)
+    delayed_flights is count() { where: dep_delay > 15 }
+    delay_rate is delayed_flights / flight_count * 100
+
+  view: monthly_summary is {
+    group_by: flight_year, flight_month
+    aggregate: flight_count, total_distance
+    order_by: flight_year, flight_month
+  }
+
+  view: carrier_performance is {
+    group_by: carriers3.nickname
+    aggregate: flight_count, delay_rate
+    order_by: flight_count desc
+  }
+}
+
+run: flights7 -> monthly_summary
+>>>markdown
+>>>malloy
+run: flights7 -> carrier_performance
+>>>markdown
+
+### Ad-hoc Queries Still Work
+
+Views don't limit you. You can still write any query:
+>>>malloy
+run: flights7 -> {
+  where: dep_time ? @2003-01
+  group_by: carriers3.nickname
+  aggregate: flight_count, avg_distance
+  order_by: flight_count desc
+  limit: 5
+}
+>>>markdown
+
+See [Views](../../language/views.malloynb) for more view patterns including nested views.
+
+---
+
+## Complete Example
+>>>malloy
+// Dimension tables
+source: carriers_dim is duckdb.table('../../data/carriers.parquet') extend {
+  primary_key: code
+}
+source: airports_dim is duckdb.table('../../data/airports.parquet') extend {
+  primary_key: code
+}
+
+// Fact table with joins
+source: flights_model is duckdb.table('../../data/flights.parquet') extend {
+  join_one: carriers_dim with carrier
+  join_one: origin_airport is airports_dim with origin
+  join_one: dest_airport is airports_dim with destination
+
+  dimension:
+    flight_year is dep_time.year
+    flight_month is dep_time.month
+    distance_bucket is
+      pick 'Short' when distance < 500
+      pick 'Medium' when distance < 1000
+      else 'Long'
+
+  measure:
+    flight_count is count()
+    total_distance is sum(distance)
+    avg_distance is avg(distance)
+    delayed_flights is count() { where: dep_delay > 15 }
+    delay_rate is delayed_flights / flight_count * 100
+
+  view: monthly_summary is {
+    group_by: flight_year, flight_month
+    aggregate: flight_count, total_distance
+    order_by: flight_year, flight_month
+  }
+
+  view: carrier_stats is {
+    group_by: carriers_dim.nickname
+    aggregate: flight_count, avg_distance, delay_rate
+    order_by: flight_count desc
+  }
+
+  view: route_analysis is {
+    group_by:
+      origin_city is origin_airport.city
+      dest_city is dest_airport.city
+    aggregate: flight_count, avg_distance
+    order_by: flight_count desc
+    limit: 20
+  }
+}
+
+run: flights_model -> carrier_stats
+>>>markdown
+
+---
+
+## The Workflow
+
+1. **Define sources** - Point at your tables
+2. **Explore** - Use VS Code to understand data
+3. **Query** - Write ad-hoc queries to answer questions
+4. **Notice patterns** - Same aggregations? Same groupings?
+5. **Promote** - Move repeated patterns to measures/dimensions
+6. **Add joins** - When you need data from other tables
+7. **Save views** - For queries you'll reuse
+
+Build iteratively. Start simple, add what you need.
+
+---
+
+## Learn More
+
+This guide covers the basics. Malloy has much more:
+
+**Language features:**
+- [Filters](../../language/filters.malloynb) - Time ranges, boolean logic, filtered aggregates
+- [Functions](../../language/functions.malloynb) - String, math, date, and type conversion functions
+- [Calculations](../../language/calculations_windows.malloynb) - Window functions (running totals, ranks, lag/lead)
+- [Nested Views](../../language/nesting.malloynb) - Subtables and multi-level analysis
+- [SQL Sources](../../language/sql_sources.malloynb) - Use raw SQL when you need database-specific features
+
+**Common patterns:**
+- [Percent of Total](../../patterns/percent_of_total.malloynb)
+- [Year-over-Year Comparisons](../../patterns/yoy.malloynb)
+- [Cohort Analysis](../../patterns/cohorts.malloynb)
+
+---
+
+## Next Steps
+
+- [Troubleshooting](troubleshooting.malloynb) - Fix common modeling issues
+- [Publishing](../publishing/publishing.malloynb) - Deploy your model
+- [Language Reference](../../language/statement.malloynb) - Full syntax documentation
+

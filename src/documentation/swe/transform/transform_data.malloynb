@@ -1,0 +1,447 @@
+>>>markdown
+# Transform Your Data
+
+Use the Malloy CLI and MalloySQL to prepare data before modeling.
+
+---
+
+## When You Need This
+
+**Performance optimization:**
+- Pre-aggregate huge tables (billions of rows) for faster queries
+- Materialize complex joins that slow down LLM or embedded queries
+- Create summary tables for dashboards that need sub-second response
+
+**Data preparation:**
+- Clean messy data (deduplication, type casting, null handling)
+- Denormalize tables into analysis-ready structures
+- Export query results to Parquet files for portability
+
+If your data is already clean and queries are fast enough, go directly to [Model Your Data](../modeling/modeling.malloynb).
+
+---
+
+## Transformation Power Built Into the Language
+
+Before reaching for external tools, know that Malloy builds common transformation patterns directly into the language.
+
+### Dimensions Reference Other Dimensions
+
+In SQL, you can't reference a column alias in the same SELECT where it's defined. When transformations build on each other, you need CTEs:
+
+```sql
+with parsed as (
+  select *,
+    regexp_extract(raw_user, r'user:[\\"]*([^\\"]+)[\\"]*') as user
+  from raw_logs
+),
+cleaned as (
+  select *,
+    coalesce(user, regexp_extract(raw_user, r'([^:]+@[^:]+)')) as cleaned_user
+  from parsed
+),
+classified as (
+  select *,
+    cleaned_user like '%@mycompany.com' as is_internal_user
+  from cleaned
+)
+select *, not is_internal_user as is_external_user from classified
+```
+
+In Malloy, dimensions can reference other dimensions directly:
+
+```malloy
+source: logs is duckdb.table('raw_logs') extend {
+  dimension:
+    user is regexp_extract(raw_user, r'user:[\\"]*([^\\"]+)[\\"]*')
+    cleaned_user is coalesce(user, regexp_extract(raw_user, r'([^:]+@[^:]+)'))
+    is_internal_user is cleaned_user ~ r'@mycompany\.com'
+    is_external_user is not is_internal_user and cleaned_user is not null
+}
+```
+
+Four lines instead of four CTEs. Each dimension can reference any earlier dimension—no restructuring needed when logic changes.
+
+### Readable Conditional Logic
+
+Complex CASE statements become `pick` expressions:
+
+```malloy
+dimension: customer_tier is
+  pick 'enterprise' when annual_revenue > 1000000
+  pick 'business' when annual_revenue > 100000
+  else 'starter'
+```
+
+### Raw SQL When Needed
+
+For database-specific functionality, use [SQL sources](../../language/sql_sources.malloynb):
+
+```malloy
+source: geo_data is duckdb.sql("""
+  SELECT address_id, ST_GEOGPOINT(longitude, latitude) as location
+  FROM addresses WHERE latitude IS NOT NULL
+""") extend {
+  measure: location_count is count()
+}
+```
+
+### Developer Experience
+
+The Malloy CLI compiles and validates transformations. The VS Code extension provides LSP support—errors are caught as you type with autocomplete, hover documentation, and go-to-definition.
+
+---
+
+## Install the Malloy CLI
+
+The CLI lets you run Malloy and MalloySQL queries from the command line.
+
+### Option 1: NPX (No Installation)
+
+Run directly without installing:
+
+```bash
+npx malloy-cli --help
+```
+
+### Option 2: Global Install
+
+Install globally via npm:
+
+```bash
+npm install -g malloy-cli
+malloy-cli --help
+```
+
+### Option 3: Direct Download
+
+Download the binary from [GitHub Releases](https://github.com/malloydata/malloy-cli/releases).
+
+**Mac users**: The CLI isn't notarized yet. After downloading, go to **System Settings → Privacy & Security** to allow it to run.
+
+---
+
+## Configure Database Connections
+
+The CLI needs credentials to connect to your database.
+
+### Create a Connection
+
+```bash
+# For BigQuery
+malloy-cli connections create-bigquery <connection-name>
+
+# For Postgres
+malloy-cli connections create-postgres <connection-name>
+
+# For DuckDB
+malloy-cli connections create-duckdb <connection-name>
+```
+
+View options for each database type:
+
+```bash
+malloy-cli connections create-bigquery --help
+```
+
+### Default Connections
+
+Two connections are created automatically if you don't override them:
+
+- **`bigquery`**: Uses existing gCloud authentication
+- **`duckdb`**: Uses a built-in DuckDB instance
+
+If your Malloy files reference these connection names, they'll work without explicit setup.
+
+### BigQuery with gCloud
+
+If you already authenticate via gCloud, no additional setup is needed:
+
+```bash
+gcloud auth login --update-adc
+malloy-cli connections create-bigquery my-bq
+```
+
+---
+
+## Run Queries
+
+### The `run` Command
+
+Execute a query and return results:
+
+```bash
+# Run a named query from a Malloy file
+malloy-cli run path/to/model.malloy --query query_name
+
+# Run a MalloySQL file
+malloy-cli run transforms.malloysql
+```
+
+### The `compile` Command
+
+Get the SQL without executing:
+
+```bash
+# See the generated SQL
+malloy-cli compile path/to/model.malloy --query query_name
+```
+
+This is useful for:
+- Debugging query logic
+- Copying SQL to other tools
+- Understanding what Malloy generates
+
+---
+
+## Write MalloySQL
+
+MalloySQL lets you mix dialect-specific SQL with Malloy in a single file. This is ideal for transformations that need DDL (CREATE TABLE) or database-specific features.
+
+### File Extensions
+
+- `.malloysql` - SQL file format
+- `.malloynb` - Notebook format (VS Code)
+
+### Specify a Connection
+
+Add this directive at the top of your file:
+
+```sql
+-- connection:my_postgres
+
+SELECT * FROM raw_orders;
+```
+
+Only the first statement needs the connection directive. Subsequent statements use the same connection.
+
+### Embed Malloy Queries
+
+Wrap Malloy code with `%{` and `}%` to embed it in SQL:
+
+```sql
+-- connection:duckdb
+
+-- First, import a source to use with Malloy
+import "models/orders.malloy"
+
+-- Use embedded Malloy in a CREATE TABLE statement
+CREATE TABLE monthly_revenue AS
+%{
+  orders -> {
+    group_by: order_date.month
+    aggregate: total_revenue
+  }
+}%
+```
+
+The Malloy query compiles to SQL and runs within the larger statement.
+
+### Comment Styles
+
+MalloySQL supports three comment styles:
+
+```sql
+-- Single line (SQL style)
+// Single line (alternative)
+/* Multi-line
+   comment */
+```
+
+---
+
+## Common Transformation Patterns
+
+### Pattern 1: Clean and Deduplicate
+
+```sql
+-- connection:postgres
+
+-- Remove duplicates based on order_id, keep most recent
+CREATE TABLE clean_orders AS
+SELECT DISTINCT ON (order_id) *
+FROM raw_orders
+ORDER BY order_id, updated_at DESC;
+```
+
+### Pattern 2: Type Casting
+
+```sql
+-- connection:postgres
+
+CREATE TABLE orders_typed AS
+SELECT
+  order_id::bigint,
+  order_date::date,
+  total_amount::numeric(10,2),
+  status::varchar(50)
+FROM raw_orders;
+```
+
+### Pattern 3: Pre-Aggregate for Performance
+
+Use embedded Malloy for semantic aggregations:
+
+```sql
+-- connection:bigquery
+
+import "models/events.malloy"
+
+-- Create a daily summary table
+CREATE OR REPLACE TABLE daily_metrics AS
+%{
+  events -> {
+    group_by: event_date
+    aggregate:
+      event_count
+      unique_users
+      total_revenue
+  }
+}%
+```
+
+### Pattern 4: Denormalize for Modeling
+
+```sql
+-- connection:postgres
+
+-- Join dimension tables into a wide fact table
+CREATE TABLE orders_denormalized AS
+SELECT
+  o.*,
+  c.customer_name,
+  c.region,
+  p.product_name,
+  p.category
+FROM orders o
+LEFT JOIN customers c ON o.customer_id = c.id
+LEFT JOIN products p ON o.product_id = p.id;
+```
+
+### Pattern 5: Export to Parquet
+
+```sql
+-- connection:duckdb
+
+-- Export query results to Parquet for portable analysis
+COPY (
+  SELECT * FROM orders WHERE order_date >= '2024-01-01'
+)
+TO 'exports/orders_2024.parquet' (FORMAT PARQUET);
+```
+
+---
+
+## Execution Tips
+
+### Run from VS Code
+
+The Malloy VS Code extension executes MalloySQL files. Click the "Run" button above any SQL statement.
+
+**Important**: Running a specific statement executes all preceding Malloy statements (imports, source definitions) but only the selected SQL.
+
+### Chain Transformations
+
+Build pipelines by running multiple MalloySQL files in sequence:
+
+```bash
+malloy-cli run transforms/01-clean.malloysql
+malloy-cli run transforms/02-aggregate.malloysql
+malloy-cli run transforms/03-export.malloysql
+```
+
+### Environment-Specific Connections
+
+Create different connections for dev vs prod:
+
+```bash
+malloy-cli connections create-postgres dev_db
+malloy-cli connections create-postgres prod_db
+```
+
+Then reference the appropriate connection in your files:
+
+```sql
+-- connection:dev_db
+-- For development testing
+```
+
+---
+
+## Best Practices
+
+### 1. Transform Early, Model Late
+
+Do heavy transformations (joins, deduplication, type casting) before the semantic layer. Your models should work with clean, well-structured data.
+
+### 2. Keep Transformations Idempotent
+
+Use `CREATE OR REPLACE` or `DROP IF EXISTS` so scripts can re-run safely:
+
+```sql
+DROP TABLE IF EXISTS clean_orders;
+CREATE TABLE clean_orders AS ...
+```
+
+### 3. Document Your Transformations
+
+Add comments explaining why each transformation exists:
+
+```sql
+-- Remove test orders (order_id < 1000 are internal tests)
+-- Added 2024-01-15 per data team request
+CREATE TABLE production_orders AS
+SELECT * FROM raw_orders WHERE order_id >= 1000;
+```
+
+### 4. Version Control Your SQL
+
+Commit `.malloysql` files alongside your Malloy models. This makes your data pipeline reproducible and auditable.
+
+---
+
+## Troubleshooting
+
+### Connection Errors
+
+```
+Error: Connection 'my_db' not found
+```
+
+**Fix**: Create the connection first:
+```bash
+malloy-cli connections create-postgres my_db
+```
+
+### Import Errors in MalloySQL
+
+```
+Error: Cannot find module 'models/orders.malloy'
+```
+
+**Fix**: Run the CLI from the directory containing your models, or use absolute paths.
+
+### BigQuery Authentication
+
+```
+Error: Could not load default credentials
+```
+
+**Fix**: Authenticate with gCloud:
+```bash
+gcloud auth login --update-adc
+gcloud config set project YOUR_PROJECT_ID
+```
+
+---
+
+## Next Steps
+
+Your data is transformed and ready for modeling.
+
+→ **[Model Your Data](../modeling/modeling.malloynb)** - Build your first semantic model
+
+**Resources**:
+- [CLI Documentation](../../malloy_cli/index.malloynb)
+- [MalloySQL Reference](../../malloy_sql/index.malloynb)
+- [malloy-cli GitHub](https://github.com/malloydata/malloy-cli)

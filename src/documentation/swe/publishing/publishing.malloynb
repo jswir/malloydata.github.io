@@ -1,0 +1,417 @@
+>>>markdown
+# Publish Your Models
+
+Deploy your Malloy models with Publisher to make them available for consumption.
+
+Once published, your models can be accessed via:
+
+- **Web UI** at `localhost:4000` – Browse and query models in your browser
+- **[REST API](../consuming/rest_api.malloynb)** at `localhost:4000/api/...` – Build custom applications
+- **[Publisher SDK](../consuming/publisher_sdk.malloynb)** – Embed analytics in React apps
+- **[MCP](../consuming/mcp_agents.malloynb)** at `localhost:4040` – Connect Claude and other AI assistants
+
+---
+
+## Quick Start
+
+### 1. Create a Package
+
+A package is a directory with your models and a manifest:
+
+```
+my-analytics/
+├── publisher.json       # Package manifest
+├── orders.malloy        # Your semantic model
+└── data/               # Optional: local data files
+```
+
+Create `publisher.json`:
+
+```json
+{
+  "name": "my-analytics",
+  "version": "1.0.0",
+  "description": "Order analytics semantic models"
+}
+```
+
+### 2. Start Publisher
+
+Navigate to the **parent directory** (the folder containing `my-analytics/`), then run:
+
+```bash
+npx @malloy-publisher/server --server_root .
+```
+
+The `--server_root` should point to the directory that **contains** your package folder(s), not the package itself.
+
+```
+projects/              ← Run npx from HERE (--server_root .)
+└── my-analytics/      ← This is your package
+    ├── publisher.json
+    └── orders.malloy
+```
+
+For [alternative deployment methods](#deployment-options) (Docker, build from source), see below.
+
+### 3. Open Browser
+
+Go to `http://localhost:4000` to browse and query your models.
+
+That's it for local files. If your models use DuckDB with `.parquet`, `.csv`, or `.json` files, you're done.
+
+**Want to connect to a database?** Keep reading to set up [database connections](#database-connections) with `publisher.config.json`.
+
+---
+
+## Database Connections
+
+### Supported Databases
+
+| Database | Type | Auth Method |
+|----------|------|-------------|
+| **DuckDB** | `duckdb` | Built-in, no config needed |
+| **MotherDuck** | `motherduck` | Access token |
+| **PostgreSQL** | `postgres` | Username/password |
+| **MySQL** | `mysql` | Username/password |
+| **BigQuery** | `bigquery` | Service account or gCloud auth |
+| **Snowflake** | `snowflake` | Password or private key |
+| **Trino** | `trino` | Server URL, optional auth |
+
+### Configuration File
+
+Create `publisher.config.json` in your server root:
+
+```json
+{
+  "projects": [
+    {
+      "name": "default",
+      "connections": {
+        "my_db": {
+          "type": "postgres",
+          "host": "localhost",
+          "port": 5432,
+          "database": "analytics",
+          "username": "readonly",
+          "password": "${DB_PASSWORD}"
+        }
+      },
+      "packages": [
+        {
+          "name": "my-analytics",
+          "location": "./my-analytics"
+        }
+      ]
+    }
+  ]
+}
+```
+
+Set environment variables for secrets:
+```bash
+export DB_PASSWORD="your_password"
+npx @malloy-publisher/server --server_root .
+```
+
+---
+
+## Connection Examples
+
+### DuckDB (Local Files)
+
+No configuration needed for local `.parquet`, `.csv`, or `.json` files.
+
+```json
+{
+  "type": "duckdb",
+  "workingDirectory": "./data"
+}
+```
+
+### MotherDuck
+
+```json
+{
+  "type": "motherduck",
+  "token": "${MOTHERDUCK_TOKEN}",
+  "database": "my_database"
+}
+```
+
+### PostgreSQL
+
+```json
+{
+  "type": "postgres",
+  "host": "db.example.com",
+  "port": 5432,
+  "database": "analytics",
+  "username": "readonly",
+  "password": "${POSTGRES_PASSWORD}"
+}
+```
+
+### MySQL
+
+```json
+{
+  "type": "mysql",
+  "host": "db.example.com",
+  "port": 3306,
+  "database": "analytics",
+  "user": "readonly",
+  "password": "${MYSQL_PASSWORD}"
+}
+```
+
+### BigQuery
+
+**With gCloud auth (development):**
+```bash
+gcloud auth login --update-adc
+```
+
+```json
+{
+  "type": "bigquery",
+  "projectId": "my-gcp-project",
+  "location": "US"
+}
+```
+
+**With service account (production):**
+```json
+{
+  "type": "bigquery",
+  "projectId": "my-gcp-project",
+  "location": "US",
+  "serviceAccountKey": {
+    "type": "service_account",
+    "project_id": "my-gcp-project",
+    "private_key": "${BQ_PRIVATE_KEY}",
+    "client_email": "publisher@my-gcp-project.iam.gserviceaccount.com"
+  }
+}
+```
+
+### Snowflake
+
+**Password auth:**
+```json
+{
+  "type": "snowflake",
+  "account": "myorg-myaccount",
+  "username": "analyst",
+  "password": "${SNOWFLAKE_PASSWORD}",
+  "warehouse": "compute_wh",
+  "database": "analytics",
+  "schema": "public"
+}
+```
+
+**Private key auth:**
+```json
+{
+  "type": "snowflake",
+  "account": "myorg-myaccount",
+  "username": "analyst",
+  "privateKey": "${SNOWFLAKE_PRIVATE_KEY}",
+  "privateKeyPassphrase": "${SNOWFLAKE_KEY_PASSPHRASE}",
+  "warehouse": "compute_wh",
+  "database": "analytics"
+}
+```
+
+### Trino
+
+```json
+{
+  "type": "trino",
+  "server": "https://trino.example.com:8443"
+}
+```
+
+---
+
+## Multiple Environments
+
+### Dev/Staging/Production
+
+```json
+{
+  "projects": [
+    {
+      "name": "staging",
+      "connections": {
+        "postgres": {
+          "type": "postgres",
+          "host": "staging-db.example.com",
+          "password": "${STAGING_DB_PASSWORD}"
+        }
+      },
+      "packages": [
+        { "name": "analytics", "location": "./packages/analytics" }
+      ]
+    },
+    {
+      "name": "production",
+      "connections": {
+        "postgres": {
+          "type": "postgres",
+          "host": "prod-db.example.com",
+          "password": "${PROD_DB_PASSWORD}"
+        }
+      },
+      "packages": [
+        { "name": "analytics", "location": "./packages/analytics" }
+      ]
+    }
+  ]
+}
+```
+
+Same models, different databases per environment.
+
+---
+
+## Deployment Options
+
+### Option 1: npx (Quickest)
+
+```bash
+npx @malloy-publisher/server --server_root ./my-packages
+```
+
+### Option 2: Build from Source
+
+```bash
+git clone https://github.com/malloydata/publisher.git
+cd publisher
+bun install
+bun run build:server-deploy
+bun run start
+```
+
+### Option 3: Docker
+
+```bash
+docker run -p 4000:4000 \
+  -v ./publisher.config.json:/publisher/publisher.config.json \
+  -v ./packages:/publisher/packages \
+  -e DB_PASSWORD="${DB_PASSWORD}" \
+  malloydata/publisher
+```
+
+### Docker Compose
+
+```yaml
+version: '3.8'
+
+services:
+  publisher:
+    image: malloydata/publisher
+    ports:
+      - "4000:4000"
+      - "4040:4040"  # MCP endpoint for AI agents
+    volumes:
+      - ./publisher.config.json:/publisher/publisher.config.json
+      - ./packages:/publisher/packages
+    environment:
+      - DB_PASSWORD=${DB_PASSWORD}
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:4000/status"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+```
+
+---
+
+## Security
+
+### Use Read-Only Credentials
+
+```sql
+-- Postgres example
+CREATE USER publisher_readonly WITH PASSWORD 'secure_password';
+GRANT CONNECT ON DATABASE analytics TO publisher_readonly;
+GRANT SELECT ON ALL TABLES IN SCHEMA public TO publisher_readonly;
+```
+
+### Never Hardcode Secrets
+
+```json
+// Wrong
+{ "password": "my_actual_password" }
+
+// Right
+{ "password": "${DB_PASSWORD}" }
+```
+
+### Network Security
+
+- Deploy behind VPN for internal use
+- Use firewall rules to restrict access
+- Configure reverse proxy (nginx) for HTTPS
+
+---
+
+## Verify It Works
+
+### Health Check
+
+```bash
+curl http://localhost:4000/status
+```
+
+### List Projects
+
+```bash
+curl http://localhost:4000/api/v1/projects
+```
+
+### Test in Browser
+
+1. Open `http://localhost:4000`
+2. Click your package
+3. Click a model
+4. Click **Explore**
+5. Add a dimension and measure
+6. Run query
+
+---
+
+## Troubleshooting
+
+**"Connection failed"**
+- Test credentials manually (psql, mysql, bq, etc.)
+- Check network/firewall allows connection
+- Verify environment variables: `echo $DB_PASSWORD`
+
+**"Package not found"**
+- Check path in config is correct
+- Verify `publisher.json` exists
+- Check file permissions
+
+**Port already in use**
+```bash
+lsof -i :4000  # Find what's using port
+npx @malloy-publisher/server --port 4001  # Use different port
+```
+
+---
+
+## Next Steps
+
+Your models are published. Build consumption experiences:
+
+- **[REST API](../consuming/rest_api.malloynb)** – Build custom applications
+- **[Publisher SDK](../consuming/publisher_sdk.malloynb)** – Embed analytics in React apps
+- **[MCP for AI Agents](../consuming/mcp_agents.malloynb)** – Connect Claude and other AI
+
+**Resources:**
+- [Publisher GitHub](https://github.com/malloydata/publisher)
+- [OpenAPI Spec](https://github.com/malloydata/publisher/blob/main/api-doc.yaml)
+

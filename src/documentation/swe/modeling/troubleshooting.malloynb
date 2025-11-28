@@ -1,0 +1,511 @@
+>>>markdown
+# Troubleshooting
+
+Jump to the section that matches your symptom:
+
+1. [Results Are Too Large](#problem-1-results-are-too-large)
+2. [Wrong Data](#problem-2-wrong-data)
+3. [Missing Features](#problem-3-missing-features)
+4. [Results Mismatch](#problem-4-results-mismatch)
+5. [Model Is Too Slow](#problem-5-model-is-too-slow)
+6. [NaN or Infinity](#problem-6-nan-or-infinity)
+7. [Which Table to Start With](#problem-7-which-table-to-start-with)
+8. [Unexpected NULLs](#problem-8-unexpected-nulls)
+
+---
+
+## Problem 1: Results Are Too Large
+
+### Symptoms
+- Query returns 500,000 flights when you expect 50,000
+- Distance is 50 million when it should be 5 million
+- Single origin shows 2,000 flights when it has 200
+
+### Diagnosis
+
+**Step 1: Test join cardinality**
+>>>malloy
+source: airports_p1 is duckdb.table('../../data/airports.parquet') extend {
+  primary_key: code
+}
+
+source: flights_p1 is duckdb.table('../../data/flights.parquet') extend {
+  join_one: airports_p1 with origin
+}
+
+run: flights_p1 -> {
+  where: id2 = 100  // ONE row
+  aggregate:
+    source_count is count()
+    joined_count is airports_p1.count()
+// If source_count=1 and joined_count=1, your join is correct
+}
+>>>markdown
+
+If `ratio > 1` for a `join_one`, you found the problem.
+
+**Step 2: Check for missing composite keys**
+
+Review your join. Does it include ALL shared foreign keys?
+
+```malloy
+// What you have
+join_one: other_table on order_id = other_table.order_id
+
+// What you might need
+join_one: other_table on order_id = other_table.order_id
+                      and warehouse_id = other_table.warehouse_id
+                      and product_id = other_table.product_id
+```
+
+### Fix
+
+1. List foreign keys in both tables
+2. Find which keys appear in BOTH
+3. Add ALL shared keys to join condition
+4. Re-test cardinality
+
+### Common Causes
+
+**Missing composite key:**
+```malloy
+// ❌ WRONG
+join_one: shipments on order_id = shipments.order_id
+// Missing warehouse_id!
+
+// ✅ CORRECT
+join_one: shipments on order_id = shipments.order_id
+                    and warehouse_id = shipments.warehouse_id
+```
+
+**Joining to pre-aggregated table:**
+```malloy
+// ❌ WRONG - daily_summary is coarser grain
+join_one: daily_summary on date = daily_summary.date
+// Each order matches same daily summary → multiplication
+
+// ✅ CORRECT - use separate model
+source: daily_summary is table('daily_summary') extend {...}
+```
+
+---
+
+## Problem 2: Wrong Data
+
+### Symptoms
+- Origin airport's data shows in destination's results
+- Carrier A's flights attributed to Carrier B
+- Geographic data doesn't match location
+
+### Diagnosis
+>>>malloy
+source: airports_p2 is duckdb.table('../../data/airports.parquet') extend {
+  primary_key: code
+}
+
+source: flights_p2 is duckdb.table('../../data/flights.parquet') extend {
+  join_one: airports_p2 with origin
+}
+
+run: flights_p2 -> {
+  where: id2 = 100
+  select:
+    id2
+    origin                 // Your join key
+    airports_p2.code       // What it matched
+    airports_p2.city       // Is this the right city?
+}
+>>>markdown
+
+### Fix
+
+Add missing keys to join condition:
+
+```malloy
+// ❌ WRONG - only joining on one key
+join_one: flight_details on date = flight_details.date
+
+// ✅ CORRECT - include all identifying keys
+join_one: flight_details on date = flight_details.date
+                         and origin = flight_details.origin
+                         and destination = flight_details.destination
+```
+
+---
+
+## Problem 3: Missing Features
+
+### Symptoms
+- "I need to group by month but there's no month dimension"
+- "I need delay rate but don't have the measure"
+- "I need carrier data but didn't join carriers table"
+
+### Fix
+
+**Missing dimension:**
+>>>malloy
+source: flights_p3 is duckdb.table('../../data/flights.parquet') extend {
+  dimension:
+    flight_month is dep_time.month
+    flight_quarter is dep_time.quarter
+    flight_year is dep_time.year
+}
+
+run: flights_p3 -> {
+  group_by: flight_month
+  aggregate: flight_count is count()
+  limit: 5
+}
+>>>markdown
+
+**Missing measure:**
+>>>malloy
+source: flights_p3b is duckdb.table('../../data/flights.parquet') extend {
+  measure:
+    flight_count is count()
+    delayed_flights is count() { where: dep_delay > 15 }
+    delay_rate is delayed_flights / flight_count * 100
+}
+
+run: flights_p3b -> {
+  aggregate: delay_rate
+}
+>>>markdown
+
+**Missing join:**
+>>>malloy
+source: carriers_p3 is duckdb.table('../../data/carriers.parquet') extend {
+  primary_key: code
+}
+
+source: flights_p3c is duckdb.table('../../data/flights.parquet') extend {
+  join_one: carriers_p3 with carrier
+}
+
+run: flights_p3c -> {
+  group_by: carriers_p3.nickname
+  aggregate: flight_count is count()
+  limit: 5
+}
+>>>markdown
+
+---
+
+## Problem 4: Results Mismatch
+
+### Symptoms
+- Flight count slightly different from other reports
+- Counts off by small percentages
+
+### Diagnosis
+
+**Check filters:**
+>>>malloy
+source: flights_p4 is duckdb.table('../../data/flights.parquet') extend {}
+
+// Are you filtering correctly?
+run: flights_p4 -> {
+  where: carrier = 'AA'  // Case sensitive!
+  where: dep_time ? @2003
+  aggregate: flight_count is count()
+}
+>>>markdown
+
+**Check timezones:**
+```malloy
+// Timestamps might be in different timezone
+dimension:
+  flight_date_utc is dep_time::date  // UTC
+  flight_date_local is dep_time at time zone 'America/Los_Angeles'::date
+```
+
+**Check NULLs:**
+>>>malloy
+// NULLs excluded from aggregations
+run: duckdb.table('../../data/flights.parquet') -> {
+  aggregate:
+    total_flights is count()
+    non_null_delays is count() { where: dep_delay is not null }
+    null_delays is count() { where: dep_delay is null }
+}
+>>>markdown
+
+### Fix
+
+Document your assumptions:
+- What timezone?
+- What status values included?
+- How are NULLs handled?
+
+---
+
+## Problem 5: Model Is Too Slow
+
+### Symptoms
+- Queries take minutes instead of seconds
+- Timeouts on large datasets
+
+### Diagnosis
+>>>malloy
+// Check how much data you're scanning
+run: duckdb.table('../../data/flights.parquet') -> {
+  aggregate:
+    row_count is count()
+}
+>>>markdown
+
+### Fix
+
+**Add filters to reduce data:**
+>>>malloy
+source: flights_p5 is duckdb.table('../../data/flights.parquet') extend {}
+
+// Filter early
+run: flights_p5 -> {
+  where: dep_time ? @2003
+  aggregate: flight_count is count()
+}
+>>>markdown
+
+**Check for missing join keys (causes expensive operations):**
+```malloy
+// Missing keys cause full table scans
+join_one: details on id = details.id
+                  and date = details.date  // Add index-friendly keys
+```
+
+**Consider materialized views:**
+Create pre-aggregated tables for common queries.
+
+**Add database indexes:**
+Index columns used in joins and filters.
+
+---
+
+## Problem 6: NaN or Infinity
+
+### Symptoms
+- Metrics show "NaN" or "Infinity"
+- Division errors
+
+### Cause
+
+Division by zero:
+```malloy
+measure:
+  rate is count_a / count_b * 100
+  // If count_b = 0, rate = Infinity
+```
+
+### Fix
+
+Handle division by zero:
+>>>malloy
+source: flights_p6 is duckdb.table('../../data/flights.parquet') extend {
+  measure:
+    flight_count is count()
+    delayed_flights is count() { where: dep_delay > 15 }
+
+    // Handle division by zero with pick
+    delay_rate is
+      pick 0 when flight_count = 0
+      else delayed_flights / flight_count * 100
+}
+
+run: flights_p6 -> {
+  where: dep_time = @2099-01-01  // Empty result set
+  aggregate: delay_rate
+}
+>>>markdown
+
+Or use `nullif`:
+```malloy
+measure:
+  rate is returned_orders / nullif(order_count, 0) * 100
+  // Returns NULL instead of Infinity when order_count = 0
+```
+
+---
+
+## Problem 7: Which Table to Start With
+
+### Symptoms
+- Multiple tables, unclear which is "main"
+- Confused about grain
+
+### Diagnosis
+
+**Ask: What questions do you want to answer?**
+
+- Questions about flights → flights table
+- Questions about airports → airports table
+- Questions about carriers → carriers table
+
+**Ask: What does one row represent?**
+>>>malloy
+// Check what one row looks like
+run: duckdb.table('../../data/flights.parquet') -> {
+  select: *
+  limit: 1
+}
+>>>markdown
+
+Choose the table whose grain matches your primary questions.
+
+### Fix
+
+If unsure, start with the most detailed table (finest grain) and aggregate up:
+>>>malloy
+// Flights (finest grain) → can aggregate to carriers, airports, etc.
+source: flights_p7 is duckdb.table('../../data/flights.parquet') extend {
+  measure:
+    flight_count is count()
+    carrier_count is count(carrier)
+    origin_count is count(origin)
+}
+
+run: flights_p7 -> {
+  aggregate:
+    flight_count
+    carrier_count
+    origin_count
+}
+>>>markdown
+
+---
+
+## Problem 8: Unexpected NULLs
+
+### Symptoms
+- Joins return NULL for columns you expected to have values
+- `joined_table.column` is NULL
+
+### Diagnosis
+>>>malloy
+source: airports_p8 is duckdb.table('../../data/airports.parquet') extend {
+  primary_key: code
+}
+
+source: flights_p8 is duckdb.table('../../data/flights.parquet') extend {
+  join_one: airports_p8 with origin
+}
+
+run: flights_p8 -> {
+  aggregate:
+    total_rows is count()
+    joined_nulls is count() { where: airports_p8.code is null }
+}
+>>>markdown
+
+### Causes
+
+**Left join not matching:**
+```malloy
+// Some source rows don't have matching dimension rows
+join_one: products with product_id
+// If product_id doesn't exist in products table → NULLs
+```
+
+**Wrong join column:**
+```malloy
+// Joining on wrong column
+join_one: products on product_id = products.sku  // Should be products.id
+```
+
+### Fix
+
+Check join condition and verify foreign keys exist in dimension table:
+>>>malloy
+// Find orphaned foreign keys (origins that don't exist in airports)
+source: airports_check is duckdb.table('../../data/airports.parquet') extend {
+  primary_key: code
+}
+
+source: flights_check is duckdb.table('../../data/flights.parquet') extend {
+  join_one: airports_check with origin
+}
+
+run: flights_check -> {
+  where: airports_check.code is null
+  group_by: origin
+  aggregate: orphan_count is count()
+  limit: 10
+}
+>>>markdown
+
+---
+
+## Quick Diagnostic Queries
+
+### Test All Joins at Once
+>>>malloy
+source: airports_diag is duckdb.table('../../data/airports.parquet') extend {
+  primary_key: code
+}
+
+source: carriers_diag is duckdb.table('../../data/carriers.parquet') extend {
+  primary_key: code
+}
+
+source: flights_diag is duckdb.table('../../data/flights.parquet') extend {
+  join_one: carriers_diag with carrier
+  join_one: airports_diag with origin
+  join_one: dest_airports_diag is airports_diag with destination
+}
+
+run: flights_diag -> {
+  aggregate:
+    total_flights is count()
+    carriers_matched is count() { where: carriers_diag.code is not null }
+    origins_matched is count() { where: airports_diag.code is not null }
+    destinations_matched is count() { where: dest_airports_diag.code is not null }
+}
+// All counts should equal total_flights for complete data
+>>>markdown
+
+### Find Data Quality Issues
+>>>malloy
+run: duckdb.table('../../data/flights.parquet') -> {
+  aggregate:
+    total is count()
+    null_distances is count() { where: distance is null }
+    negative_distances is count() { where: distance < 0 }
+    zero_distances is count() { where: distance = 0 }
+    null_delays is count() { where: dep_delay is null }
+}
+>>>markdown
+
+### Check for Duplicates
+>>>malloy
+run: duckdb.table('../../data/flights.parquet') -> {
+  group_by: id2
+  aggregate: copies is count()
+  having: copies > 1
+  limit: 5
+}
+// Should return nothing if no duplicates
+>>>markdown
+
+---
+
+## Prevention Checklist
+
+Avoid problems by:
+
+- [ ] Understanding grain of each table before building
+- [ ] Documenting all shared foreign keys between tables
+- [ ] Using ALL shared keys in fact-to-fact joins
+- [ ] Testing cardinality after adding each join
+- [ ] Validating against known values before deploying
+- [ ] Handling division by zero in calculated measures
+
+---
+
+## Getting Help
+
+If you're stuck:
+
+1. **Simplify**: Remove joins until the problem disappears
+2. **Isolate**: Test each join individually
+3. **Verify**: Check raw data in database
+4. **Ask**: [Malloy Community Slack](https://join.slack.com/t/malloy-community/shared_invite/zt-1kgfwgi5g-CrsdaRqs81QY67QW0~t_uw)
