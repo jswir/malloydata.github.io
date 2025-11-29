@@ -1,19 +1,12 @@
 >>>markdown
 # Malloy for Software Engineers
 
-Build and serve a semantic data layer with Malloy. This guide assumes you know SQL (even if reluctantly) and want to create reusable, governed data models.
-
-## Who This Is For
-
-Software engineers who:
-- Work with data but find raw SQL queries scattered and inconsistent
-- Want to define business metrics once and reuse them everywhere
-- Are building analytics features, internal tools, or AI-powered data apps
+For software engineers building data-driven experiences with Malloy—analytics features, internal tools, AI-powered apps, or anywhere you need consistent, reusable data.
 
 ## The Journey
 
 ### 1. Model Your Data
-Build semantic models that encode your business logic.
+Build semantic models that encode the meaning of your data.
 
 - **[Model Your Data](modeling/modeling.malloynb)** - Define sources, add measures/dimensions/joins, create views
 - [Troubleshooting](modeling/troubleshooting.malloynb) - Fix common modeling issues
@@ -31,7 +24,7 @@ Enable analysts, apps, and AI agents to use your models.
 - [MCP for AI Agents](consuming/mcp_agents.malloynb) - Integrate with Claude and other AI
 
 ### 4. Transform Data (Optional)
-Pre-aggregate large tables or clean messy data before modeling.
+Materialize large tables or clean messy data before modeling.
 
 - [Transform Data](transform/transform_data.malloynb) - Use CLI & MalloySQL for performance optimization and data prep
 
@@ -43,13 +36,5 @@ Pre-aggregate large tables or clean messy data before modeling.
 
 ## Prerequisites
 
-- SQL knowledge (basic to intermediate)
 - Access to your data (BigQuery, Snowflake, Postgres, DuckDB, or files)
 - [VS Code with the Malloy extension](../setup/extension.malloynb) (for modeling)
-
-## Resources
-
-- [Malloy Language Reference](../language/statement.malloynb)
-- [Malloy GitHub](https://github.com/malloydata/malloy)
-- [Publisher GitHub](https://github.com/malloydata/publisher)
-- [Malloy Community Slack](https://join.slack.com/t/malloy-community/shared_invite/zt-1kgfwgi5g-CrsdaRqs81QY67QW0~t_uw)
