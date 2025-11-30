@@ -150,24 +150,9 @@ Explicitly render as a table (often the default).
 | `.size=fill` | Fill container width | `# table.size=fill` |
 | `# column { width }` | Column width | `# column { width=lg }` |
 
-#### Pivot Example
+#### Pivot Syntax
 
-Without pivot (nested table):
->>>malloy
-#(docs) size=medium
-run: flights -> {
-  group_by: carrier
-  nest: by_year is {
-    group_by: dep_time.year
-    aggregate: flight_count
-  }
-  limit: 5
-}
->>>markdown
-
-With pivot (years become columns):
->>>malloy
-#(docs) size=medium
+```malloy
 run: flights -> {
   group_by: carrier
   # pivot
@@ -175,9 +160,8 @@ run: flights -> {
     group_by: dep_time.year
     aggregate: flight_count
   }
-  limit: 5
 }
->>>markdown
+```
 
 ### List and List Detail
 
@@ -214,20 +198,7 @@ run: flights -> {
 
 Swap rows and columns. Useful for single-row results with many measures.
 
-Without transpose (measures as columns):
->>>malloy
-#(docs) size=small
-run: flights -> {
-  aggregate:
-    flight_count
-    total_distance is distance.sum()
-    avg_distance is distance.avg()
-}
->>>markdown
-
-With transpose (measures as rows):
->>>malloy
-#(docs) size=small
+```malloy
 # transpose
 run: flights -> {
   aggregate:
@@ -235,7 +206,7 @@ run: flights -> {
     total_distance is distance.sum()
     avg_distance is distance.avg()
 }
->>>markdown
+```
 
 ---
 
