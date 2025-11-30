@@ -125,68 +125,7 @@ Example `settings.json` with Malloy connections:
 
 ## Malloy CLI Configuration
 
-The CLI stores connections separately from VS Code.
-
-### Config File Location
-
-**Mac/Linux:** `~/.config/malloy/config.json`
-**Windows:** `%USERPROFILE%\.config\malloy\config.json`
-
-Example `config.json`:
-
-```json
-{
-  "connections": [
-    {
-      "name": "bigquery",
-      "backend": "bigquery"
-    },
-    {
-      "name": "duckdb",
-      "backend": "duckdb"
-    },
-    {
-      "name": "bq_warehouse",
-      "backend": "bigquery",
-      "location": "US",
-      "project": "my-gcp-project"
-    },
-    {
-      "name": "bq_service_account",
-      "backend": "bigquery",
-      "location": "US",
-      "serviceAccountKeyPath": "./service-account-key.json"
-    }
-  ]
-}
-```
-
-### CLI Connection Commands
-
-```bash
-# List all connections
-malloy connections list
-
-# Create a new connection
-malloy connections create-bigquery my_bq_connection
-malloy connections create-postgres my_pg_connection
-malloy connections create-duckdb my_duck_connection
-
-# Test a connection
-malloy connections test my_bq_connection
-
-# Show connection details
-malloy connections show my_bq_connection
-
-# Delete a connection
-malloy connections delete my_bq_connection
-```
-
-Use `--help` to see options for each create command:
-
-```bash
-malloy connections create-bigquery --help
-```
+For CLI connection setup, see [Installing the CLI](cli.malloynb).
 
 ---
 
@@ -280,12 +219,6 @@ export MOTHERDUCK_TOKEN=your_token_here
 ```
 
 Or configure via **Malloy: Edit Connections** with `databasePath` set to `md:`.
-
-### Malloy Syntax
-
-```malloy
-source: hacker_news is md.table('sample_data.hn.hacker_news')
-```
 
 ### Publisher Config
 
@@ -596,3 +529,65 @@ Each database supports [Malloy Standard Functions](../language/functions.malloyn
 | Presto | [Presto Functions](https://prestodb.io/docs/current/functions.html) |
 
 **HyperLogLog Support:** BigQuery, Snowflake, and Trino/Presto support [HyperLogLog](../language/hyperloglog.malloynb) for efficient cardinality estimation.
+
+---
+
+## Dialect-Specific Notes
+
+### DuckDB
+
+Useful non-standard functions available in Malloy:
+- `count_approx` - Approximate count distinct
+- `string_agg_distinct` - Distinct string aggregation
+
+Additional DuckDB functions accessible via raw SQL: `list_extract`, `dayname`, `to_timestamp`, `string_agg`, `to_seconds`, `date_part`, `repeat`, `reverse`.
+
+### BigQuery
+
+Standard functions: `date_from_unix_date`, `string_agg`, `repeat`, `reverse`
+
+Specialized functions:
+- `string_agg_distinct` - Distinct string aggregation
+- `count_approx` - Approximate count distinct
+
+HyperLogLog: `HLL_COUNT.MERGE` merges sketches and estimates cardinality simultaneously.
+
+### Snowflake
+
+String operations: `repeat`, `reverse`
+
+String aggregation: `string_agg`, `string_agg_distinct`
+
+HyperLogLog: Snowflake's `HLL` function both initializes a new HLL sketch AND estimates cardinality.
+
+### PostgreSQL
+
+Available functions: `string_agg`, `repeat`, `reverse`
+
+Custom extension: `string_agg_distinct` for distinct string aggregation.
+
+### MySQL
+
+Available functions: `repeat`, `reverse`
+
+**Known issue:** MySQL lacks a native boolean data type. Boolean columns are read as numeric values.
+
+**Workaround:** Explicitly cast to boolean in filters:
+
+```malloy
+dimension: is_active is active::boolean
+```
+
+### Trino / Presto
+
+HyperLogLog functions: `hll_accumulate`, `hll_estimate`
+
+String aggregation: `string_agg`, `string_agg_distinct`
+
+Approximate counting: `count_approx`
+
+Array operations: `distinct`, `sort`, `join`, `normalize`, `slice`
+
+Statistical functions: `approx_percentile`, `corr`, `variance`, `percent_rank`
+
+**Presto-specific functions** (not available in Trino): `array_cum_sum`, `array_duplicates`, `array_top_n`, `remove_nulls`

@@ -11,15 +11,19 @@ The [Malloy VS Code Extension](https://marketplace.visualstudio.com/items?itemNa
 
 1. **Download Visual Studio Code**: If you don't already have it, download [Visual Studio Code](https://code.visualstudio.com/)
 
-2. **Open the Extensions panel**: Click the Extensions icon in the left sidebar (four blocks with one flying away)
-
-   <img class="small-img" src="./extensions_icon.png">
+2. **Open the Extensions panel**: Press `Cmd+Shift+X` (Mac) or `Ctrl+Shift+X` (Windows/Linux). Or open the Command Palette (`Cmd+Shift+P` / `Ctrl+Shift+P`) and type "Extensions: Install Extensions"
 
 3. **Install Malloy**: Search for "Malloy" and click **Install**
 
    Or install directly from the [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=malloydata.malloy-vscode).
 
-4. **Try the samples**: Download the [malloy-samples](https://github.com/malloydata/malloy-samples) repository. In VS Code, go to **File > Open Folder** and select `samples/duckdb`. DuckDB is built into the extension, so you can run queries immediately.
+4. **Try the samples**: Clone the [malloy-samples](https://github.com/malloydata/malloy-samples) repository:
+
+   ```bash
+   git clone https://github.com/malloydata/malloy-samples.git
+   ```
+
+   In VS Code, go to **File > Open Folder** and select `malloy-samples/duckdb`. DuckDB is built into the extension, so you can run queries immediately.
 
 ---
 

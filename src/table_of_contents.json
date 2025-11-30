@@ -25,12 +25,12 @@
           "link": "/setup/extension.malloynb"
         },
         {
-          "title": "Installing the CLI",
-          "link": "/setup/cli.malloynb"
-        },
-        {
           "title": "Connecting Data",
           "link": "/setup/database_connections.malloynb"
+        },
+        {
+          "title": "Installing the CLI",
+          "link": "/setup/cli.malloynb"
         }
       ]
     },
@@ -102,8 +102,17 @@
           ]
         },
         {
-          "title": "Transform & Materialize",
-          "link": "/user_guides/transform.malloynb"
+          "title": "Data Transformation",
+          "items": [
+            {
+              "title": "Transform & Materialize",
+              "link": "/user_guides/transform.malloynb"
+            },
+            {
+              "title": "Malloy for dbt Users",
+              "link": "/user_guides/malloy_for_dbt.malloynb"
+            }
+          ]
         },
         {
           "title": "Troubleshooting",

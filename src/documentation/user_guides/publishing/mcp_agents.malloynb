@@ -1,11 +1,13 @@
 >>>markdown
 # MCP for AI Agents
 
-Connect AI assistants like Claude to your Malloy semantic models using the Model Context Protocol (MCP).
+Connect AI assistants to your Malloy semantic models using the Model Context Protocol (MCP). Publisher includes a built-in MCP server that exposes your models to AI agents.
 
 ---
 
 ## Quick Start
+
+This works for MCP clients that support HTTP endpoints directly.
 
 ### 1. Start Publisher
 
@@ -13,13 +15,11 @@ Connect AI assistants like Claude to your Malloy semantic models using the Model
 npx @malloy-publisher/server --server_root /path/to/your/packages
 ```
 
-The MCP server starts automatically at `http://localhost:4040/mcp`.
+The AI sees all packages under your `server_root` directory. The MCP server starts automatically at `http://localhost:4040/mcp`.
 
 For other deployment options (Docker, git clone), see [Publish Your Models](publishing.malloynb).
 
-### 2. Configure Claude Desktop
-
-Add to your Claude Desktop config (`claude_desktop_config.json`):
+### 2. Configure Your MCP Client
 
 ```json
 {
@@ -33,10 +33,56 @@ Add to your Claude Desktop config (`claude_desktop_config.json`):
 
 ### 3. Start Asking Questions
 
-In Claude Desktop:
+Once connected, try prompts like:
 - "What Malloy packages are available?"
 - "Show me the measures in the orders model"
 - "Query total revenue by month"
+
+---
+
+## Stdio Bridge (VS Code, Claude Desktop, etc.)
+
+Some MCP clients (VS Code, Claude Desktop) require stdio-based commands instead of HTTP. Use the bridge script to translate between protocols.
+
+### Prerequisites
+
+- Python 3.x installed
+- Malloy Publisher MCP Server running on `localhost:4040/mcp`
+
+### 1. Download the Bridge
+
+[Download malloy_bridge.py](https://github.com/malloydata/publisher/blob/main/packages/server/dxt/malloy_bridge.py)
+
+Save it somewhere accessible, for example: `~/malloy_bridge.py`
+
+### 2. Configure Your MCP Client
+
+Example configuration for VS Code (`settings.json` or `.vscode/mcp.json`):
+
+```json
+{
+  "mcp": {
+    "servers": {
+      "malloy": {
+        "command": "python3",
+        "args": ["/full/path/to/malloy_bridge.py"]
+      }
+    }
+  }
+}
+```
+
+Replace `/full/path/to/malloy_bridge.py` with the actual path where you saved the bridge script.
+
+### Testing the Bridge
+
+Test the bridge script:
+
+```bash
+echo '{"jsonrpc":"2.0","method":"tools/list","id":1}' | python3 /path/to/malloy_bridge.py
+```
+
+Check `/tmp/malloy_bridge.log` for debugging information.
 
 ---
 
@@ -46,24 +92,24 @@ Publisher exposes these tools to AI agents:
 
 ### Discovery
 
-| Tool | Description |
-|------|-------------|
-| `malloy_projectList` | List all available projects |
-| `malloy_packageList` | List packages in a project |
-| `malloy_packageGet` | Get models in a package |
-| `malloy_modelGetText` | Get raw model source code |
+| Tool | Parameters | Description |
+|------|------------|-------------|
+| `malloy_projectList` | — | List all available projects |
+| `malloy_packageList` | `projectName` | List packages in a project |
+| `malloy_packageGet` | `projectName`, `packageName` | Get models in a package |
+| `malloy_modelGetText` | `projectName`, `packageName`, `modelPath` | Get raw model source code |
 
 ### Query Execution
 
-| Tool | Description |
-|------|-------------|
-| `malloy_executeQuery` | Run a Malloy query, returns JSON results |
+| Tool | Parameters | Description |
+|------|------------|-------------|
+| `malloy_executeQuery` | `projectName`, `packageName`, `modelPath`, `query` | Run a Malloy query, returns JSON results |
 
 ---
 
 ## Example Prompts
 
-Once connected, try these prompts with Claude:
+Once connected, try these prompts:
 
 **Exploration:**
 - "Use Malloy to run an exploratory analysis on the FAA dataset"
@@ -92,13 +138,13 @@ measure: clv is ...
 measure: mrr is ...
 ```
 
-### Add Comments
+### Add Annotations
 
-Comments become part of the schema AI agents can read:
+Use [tags](../../language/tags.malloynb) to add metadata that AI agents can read:
 
 ```malloy
 source: orders is duckdb.table('orders.parquet') extend {
-  // Revenue after discounts and returns
+  # "Revenue after discounts and returns"
   measure: net_revenue is sum(amount - discount - returns)
 }
 ```
@@ -117,32 +163,6 @@ view: regional_breakdown is {
   aggregate: total_revenue, order_count
 }
 ```
-
----
-
-## Security
-
-MCP queries use Publisher's database credentials. Ensure:
-- Database user has SELECT-only permissions
-- Sensitive tables aren't exposed in models
-- Consider rate limiting for production
-
----
-
-## Troubleshooting
-
-**"Connection refused" on port 4040**
-- Verify Publisher is running
-- Check firewall allows port 4040
-
-**AI can't find models**
-- Check package path in Publisher config
-- Verify `.malloy` files exist
-- Restart Publisher after adding models
-
-**Queries fail**
-- Test the query in [Explorer](explorer.malloynb) first
-- Check source/measure names match the model
 
 ---
 

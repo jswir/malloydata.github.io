@@ -22,17 +22,30 @@ npm install -g malloy-cli
 malloy-cli --help
 ```
 
-### Option 3: Direct Download
-
-Download the latest release from [GitHub Releases](https://github.com/malloydata/malloy-cli/releases).
-
-**Mac users**: The CLI is not yet notarized. After downloading, go to **System Settings → Privacy & Security** to allow it to run.
-
 ---
 
 ## Configure Connections
 
-The CLI needs database credentials to run queries.
+The CLI stores its own configuration separately from VS Code in `~/.config/malloy/config.json`.
+
+### Connection Commands
+
+```bash
+# List all connections
+malloy connections list
+
+# Create a new connection
+malloy connections create-<type> <name>
+
+# Test a connection
+malloy connections test <name>
+
+# Show connection details
+malloy connections show <name>
+
+# Delete a connection
+malloy connections delete <name>
+```
 
 ### Create a Connection
 
@@ -51,6 +64,16 @@ View options for each database type:
 
 ```bash
 malloy-cli connections create-bigquery --help
+```
+
+**BigQuery options:**
+
+```
+-p, --project <id>                    GCP project ID
+-l, --location <region>               Query location (default: "US")
+-k, --service-account-key-path <path> Path to service account JSON key
+-t, --timeout <milliseconds>          Query timeout
+-m, --maximum-bytes-billed <bytes>    Limit bytes scanned
 ```
 
 ### Default Connections

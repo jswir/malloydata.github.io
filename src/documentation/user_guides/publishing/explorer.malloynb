@@ -3,8 +3,25 @@
 
 Explorer is a no-code, visual query builder for Malloy. Use it yourself in VS Code during development, or serve it to your entire team via Publisher.
 
-- **In VS Code** – Explore data while building models, available via the Malloy extension
-- **Via Publisher** – Share with analysts and stakeholders at `http://localhost:4000`
+---
+
+## Accessing Explorer
+
+### In VS Code
+
+Click **Explore** above a `source:` definition to open Explorer directly in VS Code.
+
+<img src="../vscode-explore-schema-preview.png" alt="Explore link above source in VS Code" style="max-width: 600px;">
+
+### Via Publisher
+
+Deploy Publisher ([see Publishing](publishing.malloynb)) and share the URL with your team. Click on a published Malloy model to explore it.
+
+<img src="explorer-screenshots/publisher-model-list.png" alt="Publisher model list" style="max-width: 900px;">
+
+The URL format is: `http://localhost:4000/project/package/model`
+
+Anyone with access to Publisher can explore your semantic models—no Malloy knowledge required.
 
 ---
 
@@ -28,27 +45,6 @@ Explorer is organized into three main panels:
 3. **Results Panel** – View results as tables or charts, and inspect the underlying Malloy and SQL.
 
 <img src="explorer-screenshots/explorer-full-UI.png" alt="Explorer Full UI" style="max-width: 900px;">
-
----
-
-## Accessing Explorer
-
-### Via Publisher (for your team)
-
-Deploy Publisher ([see Publishing](publishing.malloynb)) and share the URL with your team:
-
-1. Navigate to `http://localhost:4000` (or your deployed URL)
-2. Click a **package** to see models
-3. Click **Explore** on any model
-
-Anyone with access to Publisher can explore your semantic models—no Malloy knowledge required.
-
-### In VS Code (for developers)
-
-While building models, launch Explorer directly from the editor:
-- **Command Palette**: "Malloy: Open in Explorer"
-- **Hover over source**: Click the explore icon
-- **Hover over view**: Click to explore that view
 
 ---
 
@@ -201,95 +197,6 @@ This transparency gives developers, analysts, and AI systems full access to insp
 
 ---
 
-## Building Queries: Example Workflow
-
-**Question**: "What's our revenue by category, with monthly trends?"
-
-**Step 1: Add a dimension**
-- In Source Panel, click `category`
-- This groups results by category
-
-**Step 2: Add a measure**
-- Click `total_revenue`
-- This sums revenue per category
-
-**Step 3: Add a nested query**
-- Click the More menu (...)
-- Select "Nest Query"
-- Add `order_date.month` as group by
-- Add `total_revenue` as aggregate
-
-**Step 4: Run**
-- Click the Run button
-- Results show revenue by category with expandable monthly breakdowns
-
----
-
-## Filtering Data
-
-### Filter by Dimension
-
-Click filter icon next to any dimension:
-
-**Text fields:**
-- `=` equals: `region = 'West'`
-- `!=` not equals
-- `in` multiple values: `category in ['Electronics', 'Clothing']`
-
-**Date fields:**
-- `>=` after date
-- `=` specific date
-- Date picker interface
-
-### Filter by Measure
-
-Add filters based on aggregated values:
-- `total_revenue > 100000`
-- `order_count >= 10`
-
-### Multiple Filters
-
-Add multiple filters (AND logic). All conditions must be true.
-
----
-
-## Sharing Results
-
-### Share via URL
-
-Every query generates a shareable URL. Recipients see:
-- Exact same query
-- Live results (current data)
-- Ability to modify and explore further
-
-### Export to CSV
-
-1. Build and run query
-2. Click **Download CSV** in results
-3. Opens in Excel, Google Sheets, etc.
-
----
-
-## Best Practices
-
-### Start Broad, Then Filter
-
-1. Begin with high-level view (all data)
-2. Add filters to focus
-3. Easier to remove constraints than add them
-
-### Use Pre-Built Views
-
-Views are shortcuts for common questions. Start with a view and modify from there.
-
-### Verify Results
-
-Cross-check against known values:
-- Test with small, verifiable subsets
-- Ensure filters are correct
-
----
-
 ## When to Use Explorer
 
 **Use Explorer when:**
@@ -308,6 +215,8 @@ Cross-check against known values:
 
 ## Next Steps
 
+Explorer is a Publisher SDK component. If you want to embed it in your own data application, see the [SDK documentation](publisher_sdk.malloynb).
+
 - [REST API](rest_api.malloynb) – Build custom applications
-- [Publisher SDK](publisher_sdk.malloynb) – Embed in React apps
+- [Publisher SDK](publisher_sdk.malloynb) – Embed Explorer in React apps
 - [Nested Views Reference](../../language/nesting.malloynb) – Learn more about nesting

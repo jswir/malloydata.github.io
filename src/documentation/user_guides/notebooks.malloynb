@@ -14,28 +14,9 @@ A notebook is a file with alternating cells of:
 
 When you run a notebook, each code cell executes and displays results inline. The document becomes a living report.
 
-```
-┌─────────────────────────────────────────┐
-│ # Sales Analysis                        │  ← Markdown cell
-│ Monthly breakdown by region             │
-├─────────────────────────────────────────┤
-│ run: orders -> {                        │  ← Malloy code cell
-│   group_by: region, order_date.month    │
-│   aggregate: total_sales                │
-│ }                                       │
-├─────────────────────────────────────────┤
-│ [Query results displayed here]          │  ← Auto-generated output
-├─────────────────────────────────────────┤
-│ ## Top Products                         │  ← More markdown
-│ Which products drive the most revenue?  │
-├─────────────────────────────────────────┤
-│ run: orders -> {                        │  ← Another query
-│   group_by: product_name                │
-│   aggregate: total_sales                │
-│   limit: 10                             │
-│ }                                       │
-└─────────────────────────────────────────┘
-```
+<img src="notebook-screenshot.png" alt="Malloy Notebook in VS Code" style="max-width: 800px;">
+
+This entire documentation website is built from `.malloynb` files—interweaving markdown with actual running Malloy code blocks.
 
 ---
 
@@ -49,12 +30,13 @@ In VS Code, create a new file with the `.malloynb` extension:
 File → New File → sales_analysis.malloynb
 ```
 
-### 2. Cell Markers
+### 2. Add Cells
 
-Notebooks use a simple format with cell markers to separate cells. Each cell starts with a marker line followed by the cell type:
+Click **+ Code** or **+ Markdown** to add new cells to your notebook.
 
-- Markdown cells start with a markdown marker line
-- Malloy code cells start with a malloy marker line
+<img src="add-cell-buttons.png" alt="Add cell buttons in VS Code" style="max-width: 800px;">
+
+Under the hood, `.malloynb` files are plain text with cell markers (`>>>markdown` or `>>>malloy`), so they're easy to diff and version control.
 
 ### 3. Run the Notebook
 
@@ -62,129 +44,54 @@ Click **Run All** at the top of the VS Code editor, or run individual cells by c
 
 ---
 
-## Building Models Incrementally
+## Use Cases
 
-Each Malloy cell includes code from previous cells. This lets you build models step by step:
+### Static Dashboards
 
-**First cell:** Define a source
+Notebooks render code blocks with descriptions. They can render any Malloy visualization—dashboards, charts, tables. Readers can inspect the code used to generate them.
 
-```malloy
-source: orders is duckdb.table('orders.parquet') extend {
-  measure: order_count is count()
-  measure: total_revenue is amount.sum()
-}
-```
+### Data Stories
 
-**Second cell:** Test a query
+From EDA and high-level statistics to detailed drill-down, notebooks show the flow of analysis. Use them to document your analytical journey and share insights with others.
 
-```malloy
-run: orders -> { aggregate: order_count, total_revenue }
-```
-
-**Third cell:** Add dimensions
-
-```malloy
-source: orders is orders extend {
-  dimension: order_month is created_at.month
-  dimension: is_high_value is amount > 1000
-}
-```
-
-**Fourth cell:** Use the new dimensions
-
-```malloy
-run: orders -> {
-  group_by: order_month
-  aggregate: order_count, total_revenue
-}
-```
+When published via Publisher, notebooks become read-only—great for dashboards and reports.
 
 ---
 
-## Using the Schema Panel
+## Example Notebooks
 
-When editing a Malloy cell, the **Schema panel** on the left shows all available definitions:
+See these notebooks for inspiration:
 
-- Sources you've defined
-- Fields (dimensions, measures)
-- Views
-- Joined sources
+- [Names Analysis](https://github.com/malloydata/malloy-samples/blob/main/names/names2.malloynb) - Exploring baby name trends
+- [Carrier Analysis](https://github.com/malloydata/malloy-samples/blob/main/faa/carrier_analysis.malloynb) - Flight carrier performance
+- [Auto Recalls](https://github.com/malloydata/malloy-samples/blob/main/auto_recalls/README.malloynb) - Example of starting with an import
 
-Click any item to see its definition or add it to your query.
-
----
-
-## Styling Results
-
-Control how results appear with a comment on the last line of a code cell:
-
-```malloy
-run: orders -> {
-  group_by: region
-  aggregate: total_revenue
-}
-// size=large
-```
-
-Size options: `small`, `medium`, `large`
+**Tip:** Press `.` on any GitHub page to open it in github.dev (VS Code in the browser).
 
 ---
 
 ## Importing Models
 
-Reference models from separate `.malloy` files:
+A typical notebook has two cells: an import cell and a query cell.
 
-```malloy
-import "models/ecommerce.malloy"
-```
+**Cell 1 — Import your model:**
+>>>malloy
+import "flights.malloy"
+>>>markdown
 
-Then use sources defined in that model:
-
-```malloy
-run: orders -> {
-  aggregate: order_count
-  nest: by_region is {
-    group_by: region
-    aggregate: total_revenue
+**Cell 2 — Query using sources from that model:**
+>>>malloy
+run: flights -> {
+  aggregate: flight_count
+  nest: by_carrier is {
+    group_by: carrier
+    aggregate: flight_count
+    limit: 5
   }
 }
-```
+>>>markdown
 
 This keeps your semantic model separate from analysis notebooks.
-
----
-
-## Example Model
-
-Here's a complete source definition you might use in a notebook:
-
-```malloy
-source: orders is duckdb.table('data/orders.parquet') extend {
-  primary_key: order_id
-
-  dimension:
-    order_month is created_at.month
-    customer_segment is pick
-      'Enterprise' when customer_type = 'B2B' and amount > 10000
-      'Business' when customer_type = 'B2B'
-      'Consumer' else
-
-  measure:
-    order_count is count()
-    total_revenue is amount.sum()
-    avg_order_value is amount.avg()
-}
-```
-
-Then query it:
-
-```malloy
-run: orders -> {
-  group_by: customer_segment
-  aggregate: total_revenue, order_count
-  order_by: total_revenue desc
-}
-```
 
 ---
 

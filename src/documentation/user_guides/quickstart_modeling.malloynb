@@ -1,9 +1,9 @@
 >>>markdown
 # Building a Semantic Model
 
-A semantic model defines your data's meaning—what a "customer" is, how "revenue" is calculated, which tables relate to each other. Instead of scattering this logic across SQL queries, you define it once and reuse it everywhere.
+A semantic model is the interface to your data—it defines what a "customer" is, how "revenue" is calculated, which tables relate to each other. Instead of scattering this logic across SQL queries, you define it once and reuse it everywhere.
 
-This guide takes you from raw tables to a working model.
+In the previous page, [Querying a Semantic Model](querying_a_model.malloynb), we learned how to query an existing model. Now we'll learn how to build one.
 
 ---
 
@@ -37,6 +37,8 @@ Click **Schema** in the sidebar to see:
 Once you've defined a source, you can also open **Explorer** (the visual query builder) directly in VS Code—click the source name and select **Explore** from the menu.
 
 ### Preview Data
+
+You can also click **Preview** just above the `source:` definition in VS Code. This runs a quick select on the top 20 rows from the source. Or in code:
 >>>malloy
 run: duckdb.table('../data/flights.parquet') -> { select: * limit: 5 }
 >>>markdown
@@ -75,7 +77,7 @@ run: flights -> { aggregate: flight_count, total_distance, avg_distance }
 
 ### Filtered Measures
 
-Count or sum only matching rows:
+You can also apply filters directly to measures:
 >>>malloy
 source: flights2 is duckdb.table('../data/flights.parquet') extend {
   measure:
@@ -141,7 +143,7 @@ Dimensions can be any expression—date extractions, string manipulations, case 
 Joins connect related tables. Once defined, all joined data becomes queryable—you define the relationships once and never have to write join logic in queries again.
 >>>malloy
 source: carriers is duckdb.table('../data/carriers.parquet') extend {
-  primary_key: code
+  primary_key: code  // Tells Malloy this field uniquely identifies rows
 }
 
 source: flights5 is duckdb.table('../data/flights.parquet') extend {
@@ -159,12 +161,12 @@ run: flights5 -> {
 
 ### Join Types
 
-- `join_one`: Each flight has one carrier (many-to-one)
-- `join_many`: Each carrier has many flights (one-to-many)
+- `join_one`: Each flight has one carrier (many-to-one). Use when querying from the "many" side.
+- `join_many`: Each carrier has many flights (one-to-many). Use when querying from the "one" side—e.g., starting from carriers and analyzing their flights.
 
 ### Multiple Joins to Same Table
 
-Use an alias to join the same table multiple times:
+Use an alias when joining a table with itself:
 >>>malloy
 source: airports2 is duckdb.table('../data/airports.parquet') extend {
   primary_key: code
@@ -186,7 +188,7 @@ run: flights6 -> {
 }
 >>>markdown
 
-Malloy handles aggregates correctly across joins—no more fanout bugs or incorrect counts. It uses [symmetric aggregates](../language/aggregates.malloynb) to ensure metrics compute correctly regardless of join cardinality.
+Malloy handles aggregates correctly across joins—no more fanout bugs. It automatically adjusts aggregations based on join cardinality, so `count()` returns the right number even through one-to-many joins. See [symmetric aggregates](../language/aggregates.malloynb) for details.
 
 See [Joins](../language/join.malloynb) for more join patterns.
 
@@ -251,20 +253,20 @@ See [Views](../language/views.malloynb) for more view patterns including nested 
 ---
 
 ## Complete Example
+
+In practice, put your source definitions in a `.malloy` file and import them into notebooks for analysis. Here's what a complete model looks like:
 >>>malloy
-// Dimension tables
-source: carriers_dim is duckdb.table('../data/carriers.parquet') extend {
+source: carriers_full is duckdb.table('../data/carriers.parquet') extend {
   primary_key: code
 }
-source: airports_dim is duckdb.table('../data/airports.parquet') extend {
+source: airports_full is duckdb.table('../data/airports.parquet') extend {
   primary_key: code
 }
 
-// Fact table with joins
-source: flights_model is duckdb.table('../data/flights.parquet') extend {
-  join_one: carriers_dim with carrier
-  join_one: origin_airport is airports_dim with origin
-  join_one: dest_airport is airports_dim with destination
+source: flights_full is duckdb.table('../data/flights.parquet') extend {
+  join_one: carriers_full with carrier
+  join_one: origin_airport is airports_full with origin
+  join_one: dest_airport is airports_full with destination
 
   dimension:
     flight_year is dep_time.year
@@ -288,7 +290,7 @@ source: flights_model is duckdb.table('../data/flights.parquet') extend {
   }
 
   view: carrier_stats is {
-    group_by: carriers_dim.nickname
+    group_by: carriers_full.nickname
     aggregate: flight_count, avg_distance, delay_rate
     order_by: flight_count desc
   }
@@ -303,7 +305,7 @@ source: flights_model is duckdb.table('../data/flights.parquet') extend {
   }
 }
 
-run: flights_model -> carrier_stats
+run: flights_full -> carrier_stats
 >>>markdown
 
 ---
@@ -324,24 +326,13 @@ Build iteratively. Start simple, add what you need.
 
 ## Learn More
 
-This guide covers the basics. Malloy has much more:
-
-**Language features:**
-- [Filters](../language/filters.malloynb) - Time ranges, boolean logic, filtered aggregates
-- [Functions](../language/functions.malloynb) - String, math, date, and type conversion functions
-- [Calculations](../language/calculations_windows.malloynb) - Window functions (running totals, ranks, lag/lead)
-- [Nested Views](../language/nesting.malloynb) - Subtables and multi-level analysis
-- [Sources](../language/source.malloynb#sources-from-sql-queries) - Use raw SQL when you need database-specific features
-
-**Common patterns:**
-- [Percent of Total](../patterns/percent_of_total.malloynb)
-- [Year-over-Year Comparisons](../patterns/yoy.malloynb)
-- [Cohort Analysis](../patterns/cohorts.malloynb)
+This guide covers the basics. See the language reference for [filters](../language/filters.malloynb), [functions](../language/functions.malloynb), [window calculations](../language/calculations_windows.malloynb), and [nested views](../language/nesting.malloynb). For common analytics patterns, see [percent of total](../patterns/percent_of_total.malloynb), [year-over-year](../patterns/yoy.malloynb), and [cohort analysis](../patterns/cohorts.malloynb).
 
 ---
 
 ## Next Steps
 
+- [Advanced Modeling](malloy_by_example.malloynb) - Deep dive into nesting, pipelines, and complex joins
 - [Troubleshooting](troubleshooting.malloynb) - Fix common modeling issues
 - [Publishing](publishing/publishing.malloynb) - Deploy your model
 - [Language Reference](../language/statement.malloynb) - Full syntax documentation

@@ -3,13 +3,16 @@
 
 Jump to the section that matches your symptom:
 
-1. [Non-Unique Join Key](#problem-1-non-unique-join-key)
-2. [Grain Mismatch](#problem-2-grain-mismatch)
-3. [Timezone Mismatch](#problem-3-timezone-mismatch)
-4. [Slow Query](#problem-4-slow-query)
-5. [Circular Imports](#problem-5-circular-imports)
-6. [Date Arithmetic](#problem-6-date-arithmetic)
-7. [Multi-hop Joins](#problem-7-multi-hop-joins)
+| Symptom | Problem |
+|---------|---------|
+| Row count multiplied after join | [Non-Unique Join Key](#problem-1-non-unique-join-key) |
+| Aggregates inflated 10x | [Grain Mismatch](#problem-2-grain-mismatch) |
+| Daily counts off by small % | [Timezone Mismatch](#problem-3-timezone-mismatch) |
+| Query takes minutes | [Slow Query](#problem-4-slow-query) |
+| "Maximum call stack size exceeded" | [Circular Imports](#problem-5-circular-imports) |
+| Date filter syntax questions | [Date Arithmetic](#problem-6-date-arithmetic) |
+| Can't reference joined field in join | [Multi-hop Joins](#problem-7-multi-hop-joins) |
+| "Field 'x' not found in source 'y'" | [Common Errors](#common-error-messages) |
 
 ---
 
@@ -33,7 +36,7 @@ source: flights_p1 is duckdb.table('../data/flights.parquet') extend {
 }
 
 run: flights_p1 -> {
-  where: id2 = 100  // ONE row
+  where: id2 = 30272525  // ONE row
   aggregate:
     source_count is count()
     joined_count is airports_p1.count()
@@ -45,34 +48,23 @@ If `joined_count > source_count` for a `join_one`, your join key isn't unique.
 
 ### The Problem
 
-Your join key doesn't uniquely identify rows in the target table:
+Your join key doesn't uniquely identify rows in the target table. Consider a flight segments table where each flight can have multiple segments (legs):
 
 ```malloy
-// WRONG - shipments has composite key (order_id + warehouse_id + line_item)
-join_one: shipments on order_id = shipments.order_id
-// One order matches multiple shipment rows → fan-out
+// WRONG - flight_segments keyed by (flight_id + segment_number)
+join_one: flight_segments on id2 = flight_segments.flight_id
+// One flight matches multiple segment rows → fan-out
 
 // CORRECT - include all keys that form the unique identifier
-join_one: shipments on order_id = shipments.order_id
-                    and warehouse_id = shipments.warehouse_id
-                    and line_item_id = shipments.line_item_id
+join_one: flight_segments on id2 = flight_segments.flight_id
+                          and segment_num = flight_segments.segment_number
 ```
 
 ### Fix
 
 1. Identify the primary key of the table you're joining to
 2. Include ALL columns that form that key in your join condition
-3. Re-test cardinality
-
-```malloy
-// WRONG - flight_details keyed by (date + flight_number + origin)
-join_one: flight_details on date = flight_details.date
-
-// CORRECT - include all identifying keys
-join_one: flight_details on date = flight_details.date
-                         and flight_number = flight_details.flight_number
-                         and origin = flight_details.origin
-```
+3. Re-test cardinality using the diagnostic query above
 
 ---
 
@@ -177,6 +169,9 @@ source: orders is duckdb.table('orders') extend {
 ```
 
 **Option 3: Use nested queries**
+
+Nested queries let you include detail rows without joining them to the parent grain—the aggregates stay correct at the outer level while the nested block shows supporting details:
+
 ```malloy
 run: orders -> {
   group_by: order_date
@@ -238,6 +233,10 @@ See [Timezones](../language/timezones.malloynb) for more details.
 
 ### Fix
 
+**Option 0: Check your join cardinality**
+
+Join fan-out is a common cause of slow queries. If a `join_one` isn't actually one-to-one, your dataset explodes silently. See [Non-Unique Join Key](#problem-1-non-unique-join-key) to diagnose.
+
 **Option 1: Add filters to reduce data scanned**
 ```malloy
 run: flights -> {
@@ -248,7 +247,7 @@ run: flights -> {
 
 **Option 2: Materialize a view of the data**
 
-If queries are consistently slow even with filters, pre-aggregate your data using MalloySQL:
+If the same aggregation is queried repeatedly—across dashboards, by multiple users, or by LLM agents—pre-aggregate your data using MalloySQL:
 
 ```sql
 -- connection:duckdb
@@ -291,7 +290,7 @@ source: orders is ...
 
 ### Fix
 
-Move shared definitions to a third file:
+Move shared definitions to a third file. This works because the dependency graph becomes `A→C`, `B→C` instead of `A↔B`:
 
 ```
 // shared.malloy
@@ -382,6 +381,23 @@ source: orders_with_region is duckdb.sql("""
 }
 ```
 
+Note: Denormalization trades off the semantic relationship. If `customers.region` changes in the source table, the denormalized source won't reflect it until you rebuild the SQL query.
+
 **Option 3: Use separate sources**
 
 If you need different join paths for different questions, create purpose-specific sources rather than one uber-source.
+
+---
+
+## Common Error Messages
+
+Quick reference for error strings and their likely causes:
+
+| Error Message | Likely Cause | Solution |
+|---------------|--------------|----------|
+| `Field 'x' not found in source 'y'` | Typo in field name, or missing import | Check spelling; verify the import includes the source |
+| `Cannot use aggregate in dimension` | Using a measure where a dimension is expected | Define as `measure:` not `dimension:`, or move to an `aggregate:` block |
+| `Maximum call stack size exceeded` | Circular imports | See [Circular Imports](#problem-5-circular-imports) |
+| `Source 'x' not found` | Missing import statement | Add `import "path/to/file.malloy"` |
+| `Cannot join on expression` | Using a joined field in another join condition | See [Multi-hop Joins](#problem-7-multi-hop-joins) |
+| `Primary key required for join` | Missing `primary_key` declaration on joined source | Add `primary_key: field_name` to the target source |

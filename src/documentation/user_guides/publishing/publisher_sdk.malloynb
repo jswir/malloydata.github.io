@@ -36,7 +36,7 @@ The example app demonstrates:
 
 ## Core Concepts
 
-The SDK has two fundamental building blocks:
+The SDK has two fundamental building blocks. For complete documentation, see the [Publisher SDK README](https://github.com/malloydata/publisher/blob/main/packages/sdk/README.md).
 
 ### 1. ServerProvider
 
@@ -65,7 +65,7 @@ By default, connects to `http://localhost:4000`. For production:
 
 ### 2. EmbeddedQueryResult
 
-Renders a Malloy query result with automatic visualization:
+Renders a Malloy query result. The component picks the visualization automatically—tables for flat data, bar charts for single-dimension aggregates, or whatever [renderer tag](../../language/tags.malloynb) you specify in your model (e.g., `# line_chart`).
 
 ```tsx
 import { EmbeddedQueryResult } from "@malloy-publisher/sdk";
@@ -82,161 +82,7 @@ function MyChart() {
 }
 ```
 
----
-
-## Getting Embed Strings from Explorer
-
-The easiest way to get embed strings is from the Explorer UI:
-
-1. Open Explorer on your model
-2. Build your query (add dimensions, measures, filters)
-3. Click the **</>** (embed) button
-4. Copy the JSON string
-
-The embed string looks like:
-
-```json
-{
-  "modelPath": "names1.malloynb",
-  "query": "run: names -> { group_by: decade; aggregate: total_population }",
-  "optionalPackageName": "names",
-  "optionalProjectName": "malloy-samples"
-}
-```
-
-Paste this into your React component:
-
-```tsx
-<EmbeddedQueryResult
-  embeddedQueryResult='{"modelPath":"names1.malloynb","query":"run: names -> { group_by: decade; aggregate: total_population }","optionalPackageName":"names","optionalProjectName":"malloy-samples"}'
-/>
-```
-
----
-
-## Building a Dashboard
-
-Here's a complete example of a simple dashboard:
-
-```tsx
-import { ServerProvider } from "@malloy-publisher/sdk/client";
-import { EmbeddedQueryResult } from "@malloy-publisher/sdk";
-import "@malloy-publisher/sdk/styles.css";
-
-function Dashboard() {
-  // Embed strings from Explorer
-  const revenueByMonth = JSON.stringify({
-    modelPath: "orders.malloy",
-    query: `# line_chart
-run: orders -> {
-  group_by: order_date.month
-  aggregate: total_revenue
-  order_by: 1
-}`,
-    optionalPackageName: "ecommerce",
-    optionalProjectName: "production"
-  });
-
-  const topProducts = JSON.stringify({
-    modelPath: "orders.malloy",
-    query: `run: orders -> {
-  group_by: product_name
-  aggregate: total_revenue
-  limit: 10
-}`,
-    optionalPackageName: "ecommerce",
-    optionalProjectName: "production"
-  });
-
-  return (
-    <ServerProvider>
-      <div className="dashboard-grid">
-        <div>
-          <h3>Revenue Trend</h3>
-          <EmbeddedQueryResult embeddedQueryResult={revenueByMonth} />
-        </div>
-        <div>
-          <h3>Top Products</h3>
-          <EmbeddedQueryResult embeddedQueryResult={topProducts} />
-        </div>
-      </div>
-    </ServerProvider>
-  );
-}
-
-export default Dashboard;
-```
-
----
-
-## Chart Types via Tags
-
-Control visualization with Malloy tags in your query:
-
-```tsx
-// Line chart
-const query = `# line_chart
-run: orders -> { group_by: order_date.month; aggregate: total_revenue }`;
-
-// Bar chart (default for categorical data)
-const query = `# bar_chart
-run: orders -> { group_by: region; aggregate: total_revenue }`;
-
-// Shape map (for geographic data)
-const query = `# shape_map
-run: orders -> { group_by: state; aggregate: total_revenue }`;
-```
-
-Available tags: `line_chart`, `bar_chart`, `shape_map`, `point_map`, `scatter_chart`, `dashboard`, `list`, `list_detail`
-
----
-
-## Using Raw Data with Custom Charts
-
-For full control over visualization, fetch raw data and use your own charting library:
-
-```tsx
-import { useState, useEffect } from "react";
-import { LineChart, Line, XAxis, YAxis, Tooltip } from "recharts";
-
-function CustomChart() {
-  const [data, setData] = useState([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const fetchData = async () => {
-      const query = encodeURIComponent(
-        "run: orders -> { group_by: order_date.month; aggregate: total_revenue }"
-      );
-
-      const response = await fetch(
-        `http://localhost:4000/api/v0/projects/production/packages/ecommerce/queryResults/orders.malloy?query=${query}`
-      );
-
-      const result = await response.json();
-      // Process the Malloy result format into simple objects
-      const processed = processResult(result);
-      setData(processed);
-      setLoading(false);
-    };
-
-    fetchData();
-  }, []);
-
-  if (loading) return <div>Loading...</div>;
-
-  return (
-    <LineChart width={600} height={300} data={data}>
-      <XAxis dataKey="month" />
-      <YAxis />
-      <Tooltip />
-      <Line type="monotone" dataKey="total_revenue" stroke="#3B82F6" />
-    </LineChart>
-  );
-}
-```
-
-See the `InteractiveDashboard.tsx` in the example app for a complete implementation with filters.
+The `optionalPackageName` and `optionalProjectName` parameters are required when your Publisher serves multiple projects or packages—they tell the SDK which model to use.
 
 ---
 
