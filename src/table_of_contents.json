@@ -38,16 +38,55 @@
       "title": "User Guides",
       "items": [
         {
-          "title": "Querying a Semantic Model",
-          "link": "/user_guides/querying_a_model.malloynb"
+          "title": "Getting Started",
+          "items": [
+            {
+              "title": "Querying a Semantic Model",
+              "link": "/user_guides/querying_a_model.malloynb"
+            },
+            {
+              "title": "Building a Semantic Model",
+              "link": "/user_guides/quickstart_modeling.malloynb"
+            },
+            {
+              "title": "Advanced Modeling",
+              "link": "/user_guides/malloy_by_example.malloynb"
+            }
+          ]
         },
         {
-          "title": "Building a Semantic Model",
-          "link": "/user_guides/quickstart_modeling.malloynb"
+          "title": "Analyzing & Exploring",
+          "items": [
+            {
+              "title": "Analyzing with Notebooks",
+              "link": "/user_guides/notebooks.malloynb"
+            },
+            {
+              "title": "Explorer UI",
+              "link": "/user_guides/publishing/explorer.malloynb"
+            }
+          ]
         },
         {
-          "title": "Advanced Modeling",
-          "link": "/user_guides/malloy_by_example.malloynb"
+          "title": "Publishing",
+          "items": [
+            {
+              "title": "Publish Your Models",
+              "link": "/user_guides/publishing/publishing.malloynb"
+            },
+            {
+              "title": "REST API",
+              "link": "/user_guides/publishing/rest_api.malloynb"
+            },
+            {
+              "title": "Publisher SDK (React)",
+              "link": "/user_guides/publishing/publisher_sdk.malloynb"
+            },
+            {
+              "title": "MCP for AI Agents",
+              "link": "/user_guides/publishing/mcp_agents.malloynb"
+            }
+          ]
         },
         {
           "title": "For SQL Users",
@@ -63,37 +102,8 @@
           ]
         },
         {
-          "title": "Analyzing with Notebooks",
-          "link": "/user_guides/notebooks.malloynb"
-        },
-        {
           "title": "Transform & Materialize",
           "link": "/user_guides/transform.malloynb"
-        },
-        {
-          "title": "Publishing & Consuming",
-          "items": [
-            {
-              "title": "Publish Your Models",
-              "link": "/user_guides/publishing/publishing.malloynb"
-            },
-            {
-              "title": "Explorer UI",
-              "link": "/user_guides/publishing/explorer.malloynb"
-            },
-            {
-              "title": "REST API",
-              "link": "/user_guides/publishing/rest_api.malloynb"
-            },
-            {
-              "title": "Publisher SDK (React)",
-              "link": "/user_guides/publishing/publisher_sdk.malloynb"
-            },
-            {
-              "title": "MCP for AI Agents",
-              "link": "/user_guides/publishing/mcp_agents.malloynb"
-            }
-          ]
         },
         {
           "title": "Troubleshooting",
@@ -185,13 +195,8 @@
           ]
         },
         {
-          "title": "Annotations",
-          "items": [
-            {
-              "title": "Tags",
-              "link": "/language/tags.malloynb"
-            }
-          ]
+          "title": "Tags",
+          "link": "/language/tags.malloynb"
         },
         {
           "title": "Change Log",
