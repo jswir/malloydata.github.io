@@ -15,7 +15,7 @@ npx @malloy-publisher/server --server_root /path/to/your/packages
 
 The MCP server starts automatically at `http://localhost:4040/mcp`.
 
-For other deployment options (Docker, git clone), see [Publish Your Models](../publishing/publishing.malloynb).
+For other deployment options (Docker, git clone), see [Publish Your Models](publishing.malloynb).
 
 ### 2. Configure Claude Desktop
 
@@ -151,4 +151,3 @@ MCP queries use Publisher's database credentials. Ensure:
 - [MCP Demo Video](https://www.loom.com/share/fcc5112ac1ca4bf78bee0985f1cd31be)
 - [Model Context Protocol Spec](https://modelcontextprotocol.io/)
 - [Publisher GitHub](https://github.com/malloydata/publisher)
-

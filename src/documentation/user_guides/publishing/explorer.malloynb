@@ -35,7 +35,7 @@ Explorer is organized into three main panels:
 
 ### Via Publisher (for your team)
 
-Deploy Publisher ([see Publishing](../publishing/publishing.malloynb)) and share the URL with your team:
+Deploy Publisher ([see Publishing](publishing.malloynb)) and share the URL with your team:
 
 1. Navigate to `http://localhost:4000` (or your deployed URL)
 2. Click a **package** to see models
@@ -311,4 +311,3 @@ Cross-check against known values:
 - [REST API](rest_api.malloynb) – Build custom applications
 - [Publisher SDK](publisher_sdk.malloynb) – Embed in React apps
 - [Nested Views Reference](../../language/nesting.malloynb) – Learn more about nesting
-

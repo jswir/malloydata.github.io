@@ -306,4 +306,3 @@ Then use relative paths in ServerProvider:
 - **[Example App Source](https://github.com/malloydata/publisher/tree/main/examples/data-app)** – Full working example
 - **[REST API](rest_api.malloynb)** – Direct HTTP integration
 - **[Explorer](explorer.malloynb)** – Build queries visually before embedding
-

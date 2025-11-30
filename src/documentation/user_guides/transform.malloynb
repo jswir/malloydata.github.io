@@ -1,5 +1,5 @@
 >>>markdown
-# Transform Your Data
+# Transform & Materialize
 
 Use the Malloy CLI and MalloySQL to prepare data before modeling.
 
@@ -17,7 +17,7 @@ Use the Malloy CLI and MalloySQL to prepare data before modeling.
 - Denormalize tables into analysis-ready structures
 - Export query results to Parquet files for portability
 
-If your data is already clean and queries are fast enough, go directly to [Model Your Data](../modeling/modeling.malloynb).
+If your data is already clean and queries are fast enough, go directly to [Quick Start: Modeling](quickstart_modeling.malloynb).
 
 ---
 
@@ -75,7 +75,7 @@ dimension: customer_tier is
 
 ### Raw SQL When Needed
 
-For database-specific functionality, use [SQL sources](../../language/sql_sources.malloynb):
+For database-specific functionality, use [SQL sources](../language/source.malloynb#sources-from-sql-queries):
 
 ```malloy
 source: geo_data is duckdb.sql("""
@@ -330,6 +330,54 @@ COPY (
 TO 'exports/orders_2024.parquet' (FORMAT PARQUET);
 ```
 
+### Pattern 6: Create Views with Malloy Queries
+
+Use embedded Malloy to create database views and export files:
+
+**Define a source with views:**
+
+```malloy
+source: airports is duckdb.table('../data/airports.parquet') extend {
+  measure: airport_count is count()
+
+  view: major_airports is {
+    where: major = 'Y'
+    select: *
+  }
+
+  view: by_state is {
+    group_by: state
+    aggregate: airport_count
+    nest: by_fac_type is {
+      group_by: fac_type
+      aggregate: airport_count
+    }
+  }
+}
+```
+
+**Export to CSV using embedded Malloy:**
+
+```sql
+-- In a .malloysql file
+COPY (
+%{ airports -> major_airports }%
+) TO 'major_airports.csv' (HEADER)
+```
+
+**Create a database view:**
+
+```sql
+CREATE OR REPLACE VIEW by_state as (
+%{ airports -> by_state }%
+)
+```
+
+This pattern lets you:
+- Define reusable views in a Malloy source
+- Export query results to files (CSV, Parquet, etc.)
+- Create database views backed by Malloy semantics
+
 ---
 
 ## Execution Tips
@@ -439,9 +487,7 @@ gcloud config set project YOUR_PROJECT_ID
 
 Your data is transformed and ready for modeling.
 
-→ **[Model Your Data](../modeling/modeling.malloynb)** - Build your first semantic model
+→ **[Quick Start: Modeling](quickstart_modeling.malloynb)** - Build your first semantic model
 
 **Resources**:
-- [CLI Documentation](../../malloy_cli/index.malloynb)
-- [MalloySQL Reference](../../malloy_sql/index.malloynb)
 - [malloy-cli GitHub](https://github.com/malloydata/malloy-cli)

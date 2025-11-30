@@ -1,0 +1,228 @@
+>>>markdown
+# Analyzing with Notebooks
+
+Malloy Notebooks (`.malloynb` files) combine queries, results, and documentation in a single interactive document. They're the best way to explore data, build analyses, and share findings.
+
+---
+
+## What Is a Malloy Notebook?
+
+A notebook is a file with alternating cells of:
+
+- **Markdown** - Text, headings, explanations
+- **Malloy code** - Model definitions, queries
+
+When you run a notebook, each code cell executes and displays results inline. The document becomes a living report.
+
+```
+┌─────────────────────────────────────────┐
+│ # Sales Analysis                        │  ← Markdown cell
+│ Monthly breakdown by region             │
+├─────────────────────────────────────────┤
+│ run: orders -> {                        │  ← Malloy code cell
+│   group_by: region, order_date.month    │
+│   aggregate: total_sales                │
+│ }                                       │
+├─────────────────────────────────────────┤
+│ [Query results displayed here]          │  ← Auto-generated output
+├─────────────────────────────────────────┤
+│ ## Top Products                         │  ← More markdown
+│ Which products drive the most revenue?  │
+├─────────────────────────────────────────┤
+│ run: orders -> {                        │  ← Another query
+│   group_by: product_name                │
+│   aggregate: total_sales                │
+│   limit: 10                             │
+│ }                                       │
+└─────────────────────────────────────────┘
+```
+
+---
+
+## Creating a Notebook
+
+### 1. Create the File
+
+In VS Code, create a new file with the `.malloynb` extension:
+
+```
+File → New File → sales_analysis.malloynb
+```
+
+### 2. Cell Markers
+
+Notebooks use a simple format with cell markers to separate cells. Each cell starts with a marker line followed by the cell type:
+
+- Markdown cells start with a markdown marker line
+- Malloy code cells start with a malloy marker line
+
+### 3. Run the Notebook
+
+Click **Run All** at the top of the VS Code editor, or run individual cells by clicking the play button next to each one.
+
+---
+
+## Building Models Incrementally
+
+Each Malloy cell includes code from previous cells. This lets you build models step by step:
+
+**First cell:** Define a source
+
+```malloy
+source: orders is duckdb.table('orders.parquet') extend {
+  measure: order_count is count()
+  measure: total_revenue is amount.sum()
+}
+```
+
+**Second cell:** Test a query
+
+```malloy
+run: orders -> { aggregate: order_count, total_revenue }
+```
+
+**Third cell:** Add dimensions
+
+```malloy
+source: orders is orders extend {
+  dimension: order_month is created_at.month
+  dimension: is_high_value is amount > 1000
+}
+```
+
+**Fourth cell:** Use the new dimensions
+
+```malloy
+run: orders -> {
+  group_by: order_month
+  aggregate: order_count, total_revenue
+}
+```
+
+---
+
+## Using the Schema Panel
+
+When editing a Malloy cell, the **Schema panel** on the left shows all available definitions:
+
+- Sources you've defined
+- Fields (dimensions, measures)
+- Views
+- Joined sources
+
+Click any item to see its definition or add it to your query.
+
+---
+
+## Styling Results
+
+Control how results appear with a comment on the last line of a code cell:
+
+```malloy
+run: orders -> {
+  group_by: region
+  aggregate: total_revenue
+}
+// size=large
+```
+
+Size options: `small`, `medium`, `large`
+
+---
+
+## Importing Models
+
+Reference models from separate `.malloy` files:
+
+```malloy
+import "models/ecommerce.malloy"
+```
+
+Then use sources defined in that model:
+
+```malloy
+run: orders -> {
+  aggregate: order_count
+  nest: by_region is {
+    group_by: region
+    aggregate: total_revenue
+  }
+}
+```
+
+This keeps your semantic model separate from analysis notebooks.
+
+---
+
+## Example Model
+
+Here's a complete source definition you might use in a notebook:
+
+```malloy
+source: orders is duckdb.table('data/orders.parquet') extend {
+  primary_key: order_id
+
+  dimension:
+    order_month is created_at.month
+    customer_segment is pick
+      'Enterprise' when customer_type = 'B2B' and amount > 10000
+      'Business' when customer_type = 'B2B'
+      'Consumer' else
+
+  measure:
+    order_count is count()
+    total_revenue is amount.sum()
+    avg_order_value is amount.avg()
+}
+```
+
+Then query it:
+
+```malloy
+run: orders -> {
+  group_by: customer_segment
+  aggregate: total_revenue, order_count
+  order_by: total_revenue desc
+}
+```
+
+---
+
+## Publishing Notebooks
+
+Notebooks can be deployed via [Publisher](publishing/publishing.malloynb) alongside your semantic models. Published notebooks:
+
+- Render as browsable HTML reports
+- Include live query results
+- Can be shared via URL
+
+To publish, include `.malloynb` files in your package alongside `.malloy` models:
+
+```
+my-analytics/
+├── publisher.json
+├── models/
+│   └── orders.malloy
+└── notebooks/
+    └── monthly_report.malloynb
+```
+
+---
+
+## Tips
+
+**Start simple** - Begin with a basic source, run a query, then add complexity.
+
+**Use markdown liberally** - Document your analysis as you go. Future you will thank present you.
+
+**Keep models separate** - For reusable logic, put it in a `.malloy` file and import it into notebooks.
+
+**Run cells individually** - When debugging, run one cell at a time to isolate issues.
+
+---
+
+## Next Steps
+
+- [Building Semantic Models](malloy_by_example.malloynb) - Deep dive into Malloy modeling
+- [Publishing Models](publishing/publishing.malloynb) - Deploy your work
+- [Malloy in Jupyter](../malloy_python/jupyter.malloynb) - Use Malloy in Jupyter notebooks

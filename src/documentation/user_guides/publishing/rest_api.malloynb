@@ -100,4 +100,3 @@ This keeps business logic in the model, not scattered across API calls.
 
 - **[Publisher SDK](publisher_sdk.malloynb)** – React components for embedding analytics
 - **[MCP for AI Agents](mcp_agents.malloynb)** – Connect AI assistants to your models
-

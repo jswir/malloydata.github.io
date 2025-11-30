@@ -21,12 +21,16 @@
       "title": "Setting up Malloy",
       "items": [
         {
-          "title": "Installing the Malloy Extension",
+          "title": "Installing the VS Code Extension",
           "link": "/setup/extension.malloynb"
         },
         {
-          "title": "Connecting a Database",
-          "link": "/setup/connection_instructions.malloynb"
+          "title": "Installing the CLI",
+          "link": "/setup/cli.malloynb"
+        },
+        {
+          "title": "Connecting Data",
+          "link": "/setup/database_connections.malloynb"
         }
       ]
     },
@@ -38,67 +42,62 @@
           "link": "/user_guides/querying_a_model.malloynb"
         },
         {
-          "title": "Building Semantic Models",
+          "title": "Building a Semantic Model",
+          "link": "/user_guides/quickstart_modeling.malloynb"
+        },
+        {
+          "title": "Advanced Modeling",
           "link": "/user_guides/malloy_by_example.malloynb"
         },
         {
-          "title": "Malloy for SQL Folks",
-          "link": "/user_guides/sql_experts1.malloynb"
-        },
-        {
-          "title": "More Guidance for SQL Users",
-          "link": "/user_guides/sql_experts2.malloynb"
-        }
-      ]
-    },
-    {
-      "title": "Malloy for Software Engineers",
-      "items": [
-        {
-          "title": "Overview",
-          "link": "/swe/index.malloynb"
-        },
-        {
-          "title": "Model Your Data",
-          "link": "/swe/modeling/modeling.malloynb"
-        },
-        {
-          "title": "Troubleshooting",
-          "link": "/swe/modeling/troubleshooting.malloynb"
-        },
-        {
-          "title": "Publish Your Models",
-          "link": "/swe/publishing/publishing.malloynb"
-        },
-        {
-          "title": "Consume Your Models",
+          "title": "For SQL Users",
           "items": [
             {
+              "title": "Malloy for SQL Folks",
+              "link": "/user_guides/sql_experts1.malloynb"
+            },
+            {
+              "title": "Refactoring SQL to Malloy",
+              "link": "/user_guides/sql_experts2.malloynb"
+            }
+          ]
+        },
+        {
+          "title": "Analyzing with Notebooks",
+          "link": "/user_guides/notebooks.malloynb"
+        },
+        {
+          "title": "Transform & Materialize",
+          "link": "/user_guides/transform.malloynb"
+        },
+        {
+          "title": "Publishing & Consuming",
+          "items": [
+            {
+              "title": "Publish Your Models",
+              "link": "/user_guides/publishing/publishing.malloynb"
+            },
+            {
               "title": "Explorer UI",
-              "link": "/swe/consuming/explorer.malloynb"
+              "link": "/user_guides/publishing/explorer.malloynb"
             },
             {
               "title": "REST API",
-              "link": "/swe/consuming/rest_api.malloynb"
-            },
-            {
-              "title": "MCP for AI Agents",
-              "link": "/swe/consuming/mcp_agents.malloynb"
+              "link": "/user_guides/publishing/rest_api.malloynb"
             },
             {
               "title": "Publisher SDK (React)",
-              "link": "/swe/consuming/publisher_sdk.malloynb"
+              "link": "/user_guides/publishing/publisher_sdk.malloynb"
+            },
+            {
+              "title": "MCP for AI Agents",
+              "link": "/user_guides/publishing/mcp_agents.malloynb"
             }
           ]
         },
         {
-          "title": "Transform Data",
-          "items": [
-            {
-              "title": "CLI & MalloySQL",
-              "link": "/swe/transform/transform_data.malloynb"
-            }
-          ]
+          "title": "Troubleshooting",
+          "link": "/user_guides/troubleshooting.malloynb"
         }
       ]
     },
@@ -106,113 +105,107 @@
       "title": "Language Reference",
       "items": [
         {
-          "title": "Models",
-          "link": "/language/statement.malloynb"
-        },
-        {
-          "title": "Sources",
-          "link": "/language/source.malloynb"
-        },
-        {
-          "title": "Queries",
-          "link": "/language/query.malloynb"
-        },
-        {
-          "title": "Views",
-          "link": "/language/views.malloynb"
-        },
-        {
-          "title": "Data Types",
-          "link": "/language/datatypes.malloynb"
-        },
-        {
-          "title": "Fields",
-          "link": "/language/fields.malloynb"
-        },
-        {
-          "title": "Aggregates",
-          "link": "/language/aggregates.malloynb"
-        },
-        {
-          "title": "Expressions",
-          "link": "/language/expressions.malloynb"
-        },
-        {
-          "title": "Functions",
-          "link": "/language/functions.malloynb"
-        },
-        {
-          "title": "Filters",
-          "link": "/language/filters.malloynb"
-        },
-        {
-          "title": "Calculations (window functions)",
-          "link": "/language/calculations_windows.malloynb"
-        },
-        {
-          "title": "Ordering and Limiting",
-          "link": "/language/order_by.malloynb"
-        },
-        {
-          "title": "Joins",
-          "link": "/language/join.malloynb"
-        },
-        {
-          "title": "Nested Views",
-          "link": "/language/nesting.malloynb"
-        },
-        {
-          "title": "SQL Sources",
-          "link": "/language/sql_sources.malloynb"
-        },
-        {
-          "title": "Imports",
-          "link": "/language/imports.malloynb"
-        },
-        {
-          "title": "Connections",
-          "link": "/language/connections.malloynb"
-        },
-        {
-          "title": "Tags",
-          "link": "/language/tags.malloynb"
-        },
-        {
           "title": "Quick Reference",
           "link": "/language/quick_reference.html"
         },
         {
-          "title": "Change Log",
-          "link": "/language/changelog.malloynb"
-        },
-        {
-          "title": "Dialects",
+          "title": "Core Concepts",
           "items": [
             {
-              "title": "BigQuery",
-              "link": "/language/dialect/bigquery.malloynb"
+              "title": "File Structure",
+              "link": "/language/statement.malloynb"
             },
             {
-              "title": "Presto / Trino",
-              "link": "/language/dialect/presto-trino.malloynb"
+              "title": "Sources",
+              "link": "/language/source.malloynb"
             },
             {
-              "title": "Snowflake",
-              "link": "/language/dialect/snowflake.malloynb"
+              "title": "Queries",
+              "link": "/language/query.malloynb"
             },
-            { "title": "MySQL", "link": "/language/dialect/mysql.malloynb" },
-            { "title": "DuckDB", "link": "/language/dialect/duckdb.malloynb" },
             {
-              "title": "PostgreSQL",
-              "link": "/language/dialect/postgres.malloynb"
+              "title": "Views",
+              "link": "/language/views.malloynb"
             }
           ]
+        },
+        {
+          "title": "Field Types",
+          "items": [
+            {
+              "title": "Dimensions",
+              "link": "/language/dimensions.malloynb"
+            },
+            {
+              "title": "Aggregates",
+              "link": "/language/aggregates.malloynb"
+            },
+            {
+              "title": "Calculations",
+              "link": "/language/calculations_windows.malloynb"
+            }
+          ]
+        },
+        {
+          "title": "Data & Expressions",
+          "items": [
+            {
+              "title": "Data Types",
+              "link": "/language/datatypes.malloynb"
+            },
+            {
+              "title": "Expressions",
+              "link": "/language/expressions.malloynb"
+            },
+            {
+              "title": "Functions",
+              "link": "/language/functions.malloynb"
+            }
+          ]
+        },
+        {
+          "title": "Query Operations",
+          "items": [
+            {
+              "title": "Filters",
+              "link": "/language/filters.malloynb"
+            },
+            {
+              "title": "Joins",
+              "link": "/language/join.malloynb"
+            },
+            {
+              "title": "Nested Views",
+              "link": "/language/nesting.malloynb"
+            },
+            {
+              "title": "Ordering and Limiting",
+              "link": "/language/order_by.malloynb"
+            }
+          ]
+        },
+        {
+          "title": "Annotations",
+          "items": [
+            {
+              "title": "Tags",
+              "link": "/language/tags.malloynb"
+            }
+          ]
+        },
+        {
+          "title": "Change Log",
+          "link": "/language/changelog.malloynb"
         }
       ]
     },
     {
       "title": "Common Patterns",
       "items": [
+        {
+          "title": "Patterns Overview",
+          "link": "/patterns/index.malloynb"
+        },
         {
           "title": "Comparing Timeframes",
           "link": "/patterns/yoy.malloynb"
@@ -250,10 +243,6 @@
           "link": "/patterns/moving_avg.malloynb"
         },
         {
-          "title": "Transform Data",
-          "link": "/patterns/transform.malloynb"
-        },
-        {
           "title": "Sessionize - Map/Reduce",
           "link": "/patterns/sessionize.malloynb"
         },
@@ -269,6 +258,18 @@
         {
           "title": "Overview",
           "link": "/visualizations/about_rendering.malloynb"
+        },
+        {
+          "title": "Renderer Tags",
+          "link": "/visualizations/renderer_tags.malloynb"
+        },
+        {
+          "title": "Tag Cheatsheet",
+          "link": "/visualizations/renderer_cheatsheet.malloynb"
+        },
+        {
+          "title": "Custom Plugins",
+          "link": "/visualizations/plugins.malloynb"
         }
       ]
     },
@@ -330,24 +331,6 @@
       ]
     },
     {
-      "title": "MalloySQL",
-      "items": [
-        {
-          "title": "Using MalloySQL",
-          "link": "/malloy_sql/index.malloynb"
-        }
-      ]
-    },
-    {
-      "title": "Malloy CLI",
-      "items": [
-        {
-          "title": "The Malloy CLI",
-          "link": "/malloy_cli/index.malloynb"
-        }
-      ]
-    },
-    {
       "title": "Malloy with Python",
       "items": [
         {
@@ -374,10 +357,6 @@
         {
           "title": "SQL Expressions",
           "link": "/experiments/sql_expressions.malloynb"
-        },
-        {
-          "title": "Window Partitions",
-          "link": "/experiments/window.malloynb"
         },
         {
           "title": "Parameters",
