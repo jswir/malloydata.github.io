@@ -176,11 +176,13 @@ div.sidebar-section-title {
   margin: 2px 0;
   border-radius: 50px;
   font-family: "Roboto", Arial, Helvetica, sans-serif;
-  font-weight: 500;
-  font-size: 14px;
+  font-weight: 600;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
   display: flex;
   padding: 3px 10px;
-  color: #48494c;
+  color: #666;
   cursor: pointer;
   justify-content: space-between;
   align-items: center;
