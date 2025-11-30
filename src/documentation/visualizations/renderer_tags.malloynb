@@ -84,8 +84,8 @@ run: flights -> {
 #### Multi-Series Line Chart
 
 Use explicit axis tags to control which fields map to x, y, and series:
->>>malloy
-#(docs) size=large
+
+```malloy
 # line_chart { series.limit=5 }
 run: flights -> {
   group_by:
@@ -99,7 +99,7 @@ run: flights -> {
     carrier
   order_by: departure_month
 }
->>>markdown
+```
 
 ---
 
