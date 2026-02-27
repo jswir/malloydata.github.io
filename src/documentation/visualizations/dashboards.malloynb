@@ -1,36 +1,280 @@
 >>>markdown
 # Dashboards
 
-The `dashboard` style can be invoked on something that will render as a table `# dashboard` tag. When a query is rendered as a dashboard, dimensions aligned at the top, and agregates and nested queries float within the dashboard.
+The `# dashboard` tag renders a query as a dashboard layout. Dimensions appear as headers at the top of each row, while measures display as KPI cards and nested queries render as charts or tables within cards.
 
+The examples below use the following source:
 >>>malloy
-source: airports is duckdb.table('../data/airports.parquet') extend {
-  measure: airport_count is count()
-
-  view: by_state_and_county is {
-    limit: 10
-    group_by: state
-    aggregate: airport_count
-    nest: by_fac_type is  {
-      group_by: fac_type
-      aggregate: airport_count
-    }
-  }
+source: products is duckdb.table('../data/products.parquet') extend {
+  measure:
+    product_count is count()
+    avg_price is retail_price.avg()
+    total_retail is retail_price.sum()
+    max_price is retail_price.max()
 }
 >>>markdown
 
-Queries in Malloy are often very complex and multifaceted, which makes them difficult to read in one nested table:
+## Basic Dashboard
 
->>>malloy
-#(docs) size=medium limit=5000
-run: airports -> by_state_and_county
->>>markdown
-
-In such cases, the `# dashboard` renderer is useful for making the results easier to read:
+Apply `# dashboard` to any query with dimensions, measures, and nested views. Dimensions become row headers, measures become KPI values, and nested queries render in cards.
 
 >>>malloy
 #(docs) size=large limit=5000
 # dashboard
-run: airports -> by_state_and_county
+run: products -> {
+  group_by: category
+  aggregate: avg_price, total_retail, max_price
+  nest: by_brand is {
+    group_by: brand
+    aggregate:
+      avg_retail is retail_price.avg()
+      product_count
+    limit: 8
+  }
+}
 >>>markdown
+
+## Grid Layout with Columns
+
+By default, dashboard items arrange themselves in an auto-fit grid. Use `columns` to set a fixed number of equal-width columns:
+
+>>>malloy
+#(docs) size=large limit=5000
+# dashboard { columns = 3 }
+run: products -> {
+  group_by: category
+  aggregate: avg_price, total_retail, max_price
+}
+>>>markdown
+
+## Span: Controlling Item Width
+
+For precise control, use `# span` on individual items. Spans use a 12-column grid (like Bootstrap). When any item in a group has a `span`, the layout switches to the 12-column grid for that group.
+
+Common patterns: `span = 12` (full width), `span = 6` (half), `span = 4` (third), `span = 3` (quarter).
+
+>>>malloy
+#(docs) size=large limit=5000
+# dashboard
+run: products -> {
+  group_by: category
+  aggregate:
+    # span = 4
+    avg_price
+    # span = 4
+    total_retail
+    # span = 4
+    max_price
+  nest:
+    # span = 6
+    # bar_chart
+    by_brand_chart is {
+      group_by: brand
+      aggregate: avg_retail is retail_price.avg()
+      limit: 8
+    }
+    # span = 6
+    by_brand_table is {
+      group_by: brand
+      aggregate:
+        avg_retail is retail_price.avg()
+        product_count
+      limit: 8
+    }
+}
+>>>markdown
+
+## Row Breaks
+
+Use `# break` to force items onto a new row. This is useful when you want KPIs on one row and charts/tables on the next:
+
+>>>malloy
+#(docs) size=large limit=5000
+# dashboard
+run: products -> {
+  group_by: category
+  aggregate:
+    # span = 4
+    avg_price
+    # span = 4
+    total_retail
+    # span = 4
+    max_price
+  nest:
+    # break
+    # span = 6
+    # bar_chart
+    by_brand_chart is {
+      group_by: brand
+      aggregate: avg_retail is retail_price.avg()
+      limit: 8
+    }
+    # span = 6
+    by_brand_table is {
+      group_by: brand
+      aggregate:
+        avg_retail is retail_price.avg()
+        product_count
+      limit: 8
+    }
+}
+>>>markdown
+
+## Subtitles
+
+Add a subtitle to any dashboard item with `# subtitle="..."`:
+
+>>>malloy
+#(docs) size=large limit=5000
+# dashboard
+run: products -> {
+  group_by: category
+  nest:
+    # span = 6
+    # bar_chart
+    # subtitle="Top 10 brands by average price"
+    by_brand_chart is {
+      group_by: brand
+      aggregate: avg_retail is retail_price.avg()
+      limit: 10
+    }
+    # span = 6
+    # subtitle="Top 10 brands"
+    by_brand_table is {
+      group_by: brand
+      aggregate:
+        avg_retail is retail_price.avg()
+        product_count
+      limit: 10
+    }
+}
+>>>markdown
+
+## Big Value KPIs
+
+The `# big_value` plugin renders a single measure as a prominent KPI card. When placed inside a dashboard, big values automatically center within their card and vertically align with adjacent items.
+
+>>>malloy
+#(docs) size=large limit=5000
+# dashboard
+run: products -> {
+  group_by: category
+  nest:
+    # span = 6
+    # big_value
+    avg_price_kpi is {
+      aggregate:
+        # label="Average Retail Price"
+        # currency
+        avg_price is retail_price.avg()
+    }
+    # span = 6
+    # bar_chart
+    # subtitle="Top 10 brands"
+    brand_chart is {
+      group_by: brand
+      aggregate: avg_retail is retail_price.avg()
+      limit: 10
+    }
+}
+>>>markdown
+
+## Big Values with Sparklines
+
+Big values can include inline sparkline charts. Define a nested query for the trend data, mark it `# hidden`, and reference it with the `sparkline` parameter:
+
+>>>malloy
+#(docs) size=large limit=5000
+# dashboard
+run: products -> {
+  group_by: category
+  nest:
+    # span = 4
+    # big_value
+    avg_price_card is {
+      aggregate:
+        # label="Avg Price"
+        # currency
+        # big_value { sparkline=price_trend }
+        avg_price is retail_price.avg()
+      # line_chart { size=spark y.independent=true }
+      # hidden
+      nest: price_trend is {
+        group_by: product_bucket is floor(id / 100)::number
+        # currency
+        aggregate: price is retail_price.avg()
+        order_by: product_bucket
+        limit: 20
+      }
+    }
+    # span = 4
+    # big_value
+    total_products_card is {
+      aggregate:
+        # label="Products"
+        # big_value { sparkline=count_trend }
+        product_count is count()
+      # bar_chart { size=spark y.independent=true }
+      # hidden
+      nest: count_trend is {
+        group_by: product_bucket is floor(id / 100)::number
+        aggregate: cnt is count()
+        order_by: product_bucket
+        limit: 20
+      }
+    }
+    # span = 4
+    # big_value
+    max_price_card is {
+      aggregate:
+        # label="Max Price"
+        # currency
+        # big_value { sparkline=max_trend }
+        max_price is retail_price.max()
+      # line_chart { size=spark y.independent=true }
+      # hidden
+      nest: max_trend is {
+        group_by: product_bucket is floor(id / 100)::number
+        # currency
+        aggregate: price is retail_price.max()
+        order_by: product_bucket
+        limit: 20
+      }
+    }
+}
+>>>markdown
+
+## Borderless Tables
+
+By default, tables inside dashboards render inside cards with borders and shadows. Add `# borderless` to remove the card styling:
+
+>>>malloy
+#(docs) size=large limit=5000
+# dashboard
+run: products -> {
+  group_by: category
+  aggregate: avg_price, product_count
+  nest:
+    # borderless
+    by_brand is {
+      group_by: brand
+      aggregate:
+        avg_retail is retail_price.avg()
+        product_count
+      limit: 5
+    }
+}
+>>>markdown
+
+## Tag Reference
+
+| Tag | Applies to | Description |
+|---|---|---|
+| `# dashboard` | Query/view | Renders as a dashboard layout |
+| `# dashboard { columns = N }` | Query/view | Sets N equal-width columns |
+| `# span = N` | Field | Sets item width (N out of 12 columns) |
+| `# break` | Field | Forces a new row before this item |
+| `# subtitle="..."` | Field | Adds a subtitle below the item title |
+| `# borderless` | Nested table | Removes card styling from a table |
+| `# big_value` | Nested query | Renders as a prominent KPI card |
 
